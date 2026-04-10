@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMS-Team Manager</title>
+    <meta name="description" content="EMS-Team Manager Operations Dashboard">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ========== SPLASH SCREEN ========== -->
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-logo-container">
+            <div class="splash-ring splash-ring-outer"></div>
+            <div class="splash-ring splash-ring-inner"></div>
+            <img src="logo.png" alt="Logo" class="splash-logo">
+        </div>
+        <div class="splash-title">EMS-Team Manager</div>
+        <div class="splash-subtitle">Powered by Eddymo 3.1</div>
+    </div>
+
+    <!-- ========== LOGIN SCREEN ========== -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-box card">
+            <div class="brand">
+                <img src="logo.png" alt="EMS-Team Manager Logo">
+                <span>EMS-Team Manager</span>
+            </div>
+            <form id="form-login">
+                <div class="form-group">
+                    <label data-i18n="login.username">Username (or Member Name)</label>
+                    <input type="text" id="login-username" required placeholder="e.g. admin or Jean Moussavou">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="login.password">Password</label>
+                    <input type="password" id="login-password" required placeholder="Enter your password">
+                </div>
+                <div id="login-error" class="form-error">Invalid credentials.</div>
+                <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;">
+                    <i class="fa-solid fa-lock"></i> <span data-i18n="login.submit">Login Securely</span>
+                </button>
+            </form>
+            <div class="login-footer">
+                <span data-i18n="login.footer">EMS-Team Manager Operations Dashboard v2.0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== APP CONTAINER ========== -->
+    <div class="app-container" style="display:none;">
+
+        <!-- Sidebar Overlay (mobile) -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="logo.png" alt="EMS-Team Manager Logo">
+                <span>EMS-Team Manager</span>
+            </div>
+            <nav class="nav-menu">
+                <div class="nav-section-title" data-i18n="nav.main">MAIN MENU</div>
+                <a href="#" class="nav-item active" data-tab="dashboard">
+                    <i class="fa-solid fa-table-columns"></i>
+                    <span data-i18n="nav.dashboard">Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="tasks">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span data-i18n="nav.tasks">Manage Tasks</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="departments">
+                    <i class="fa-solid fa-building"></i>
+                    <span data-i18n="nav.departments">Departments</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="teams">
+                    <i class="fa-solid fa-people-group"></i>
+                    <span data-i18n="nav.teams">Teams</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="customers">
+                    <i class="fa-solid fa-address-book"></i>
+                    <span data-i18n="nav.customers">Customers</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="equipment">
+                    <i class="fa-solid fa-toolbox"></i>
+                    <span data-i18n="nav.equipment">Equipment</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="members">
+                    <i class="fa-solid fa-user-tie"></i>
+                    <span data-i18n="nav.members">Members</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="stats">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span data-i18n="nav.stats">Reports & Stats</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="finance">
+                    <i class="fa-solid fa-wallet"></i>
+                    <span data-i18n="nav.finance">Finance & Payroll</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="sales">
+                    <i class="fa-solid fa-cash-register"></i>
+                    <span data-i18n="nav.sales">Sales Department</span>
+                </a>
+            </nav>
+            <nav class="nav-menu bottom">
+                <a href="#" class="nav-item" id="nav-change-password">
+                    <i class="fa-solid fa-key"></i>
+                    <span data-i18n="nav.password">Change Password</span>
+                </a>
+                <a href="#" class="nav-item text-danger" id="nav-logout">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    <span data-i18n="nav.logout">Logout</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div style="display:flex;align-items:center;gap:14px;">
+                    <button class="hamburger-btn" id="hamburger-btn">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="header-titles">
+                        <h1 id="header-title">Dashboard</h1>
+                        <p id="header-subtitle" data-i18n="header.welcome">Welcome back. Here's your EMS-Team Manager overview.</p>
+                    </div>
+                </div>
+                <div class="header-controls">
+                    <div class="avail-toggle-header" id="avail-toggle-header" style="display:none;" title="Toggle your availability">
+                        <span class="avail-dot available" id="avail-header-dot"></span>
+                        <span id="avail-header-text">Available</span>
+                    </div>
+                    <button class="header-btn" id="theme-toggle" title="Toggle Dark/Light Mode">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                    <button class="header-btn lang-toggle" id="lang-toggle" title="Switch Language">
+                        FR
+                    </button>
+                    <div class="user-profile">
+                        <div class="user-profile-info">
+                            <div class="user-profile-name" id="logged-user-name">Admin User</div>
+                            <div class="user-profile-role" id="logged-user-role">Administrator</div>
+                        </div>
+                    </div>
+                    <div class="search-bar">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="global-search" placeholder="Search..." data-i18n-placeholder="search.placeholder">
+                        <div class="search-results" id="search-results"></div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Ghost Watermark -->
+            <img src="logo.png" alt="" class="ghost-watermark">
+
+            <!-- ===== DASHBOARD VIEW ===== -->
+            <section id="view-dashboard" class="view-section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa-solid fa-building"></i></div>
+                        <div class="stat-value" id="stat-depts">0</div>
+                        <div class="stat-label" data-i18n="stat.departments">Departments</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa-solid fa-people-group"></i></div>
+                        <div class="stat-value" id="stat-teams">0</div>
+                        <div class="stat-label" data-i18n="stat.teams">Active Teams</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa-solid fa-address-book"></i></div>
+                        <div class="stat-value" id="stat-customers">0</div>
+                        <div class="stat-label" data-i18n="stat.customers">Total Customers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa-solid fa-list-check"></i></div>
+                        <div class="stat-value" id="stat-tasks">0</div>
+                        <div class="stat-label" data-i18n="stat.tasks">Total Tasks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa-solid fa-toolbox"></i></div>
+                        <div class="stat-value" id="stat-equipment">0</div>
+                        <div class="stat-label" data-i18n="stat.equipment">Total Equipment</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa-solid fa-check text-success"></i></div>
+                        <div class="stat-value text-success" id="stat-equip-avail">0</div>
+                        <div class="stat-label" data-i18n="stat.equipAvail">Equip. Available</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa-solid fa-check-double text-success"></i></div>
+                        <div class="stat-value text-success" id="stat-completed">0</div>
+                        <div class="stat-label" data-i18n="stat.completed">Completed Tasks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa-solid fa-user-tie"></i></div>
+                        <div class="stat-value" id="stat-members">0</div>
+                        <div class="stat-label" data-i18n="stat.members">Total Members</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa-solid fa-user-check text-success"></i></div>
+                        <div class="stat-value text-success" id="stat-available-workers">0</div>
+                        <div class="stat-label" data-i18n="stat.availWorkers">Available Workers</div>
+                    </div>
+                </div>
+
+                <div class="main-grid">
+                    <div class="card tasks-card">
+                        <div class="card-header border-bottom">
+                            <h2 data-i18n="dash.recentTasks">Recent Tasks</h2>
+                            <button class="btn btn-outline btn-sm" id="btn-view-all-tasks">
+                                <span data-i18n="dash.viewAll">View All</span>
+                            </button>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="col.task">TASK</th>
+                                        <th data-i18n="col.department">DEPT</th>
+                                        <th data-i18n="col.team">TEAM</th>
+                                        <th data-i18n="col.assignees">ASSIGNEES</th>
+                                        <th data-i18n="col.customer">CUSTOMER</th>
+                                        <th data-i18n="col.deadline">DEADLINE</th>
+                                        <th data-i18n="col.priority">PRIORITY</th>
+                                        <th data-i18n="col.status">STATUS</th>
+                                        <th data-i18n="col.actions">ACTIONS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dashboard-tasks-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card quick-actions-card" id="quick-actions-card">
+                        <div class="card-header border-bottom">
+                            <h2 data-i18n="dash.quickActions">Quick Actions</h2>
+                        </div>
+                        <div class="action-list">
+                            <button class="action-item" id="qa-task">
+                                <div class="action-icon"><i class="fa-solid fa-plus"></i></div>
+                                <div class="action-text">
+                                    <h3 data-i18n="qa.createTask">Create Task</h3>
+                                    <p data-i18n="qa.createTaskDesc">Assign a new task to a team</p>
+                                </div>
+                            </button>
+                            <button class="action-item" id="qa-department">
+                                <div class="action-icon"><i class="fa-solid fa-building"></i></div>
+                                <div class="action-text">
+                                    <h3 data-i18n="qa.addDept">Add Department</h3>
+                                    <p data-i18n="qa.addDeptDesc">Create a new department</p>
+                                </div>
+                            </button>
+                            <button class="action-item" id="qa-team">
+                                <div class="action-icon"><i class="fa-solid fa-people-group"></i></div>
+                                <div class="action-text">
+                                    <h3 data-i18n="qa.formTeam">Form Team</h3>
+                                    <p data-i18n="qa.formTeamDesc">Assemble a new team</p>
+                                </div>
+                            </button>
+                            <button class="action-item" id="qa-member">
+                                <div class="action-icon"><i class="fa-solid fa-user-plus"></i></div>
+                                <div class="action-text">
+                                    <h3 data-i18n="qa.addMember">Add Member</h3>
+                                    <p data-i18n="qa.addMemberDesc">Add a leader or worker</p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== TASKS VIEW ===== -->
+            <section id="view-tasks" class="view-section">
+                <div class="card full-height">
+                    <div class="card-header border-bottom">
+                        <h2 data-i18n="tasks.title">All Tasks</h2>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-neon btn-sm" id="btn-export-tasks-csv">
+                                <i class="fa-solid fa-download"></i> CSV
+                            </button>
+                            <button class="btn btn-primary" id="btn-new-task">
+                                <i class="fa-solid fa-plus"></i> <span data-i18n="tasks.newTask">New Task</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="filter-bar" id="tasks-filter-bar">
+                        <div>
+                            <label data-i18n="filter.status">Status</label>
+                            <select id="filter-task-status">
+                                <option value="">All</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Active">Active</option>
+                                <option value="Completed">Completed</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label data-i18n="filter.priority">Priority</label>
+                            <select id="filter-task-priority">
+                                <option value="">All</option>
+                                <option value="High">High</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Low">Low</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label data-i18n="filter.search">Search</label>
+                            <input type="text" id="filter-task-search" placeholder="Search tasks...">
+                        </div>
+                    </div>
+                    <div class="table-container p-4">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="col.taskTitle">TASK TITLE</th>
+                                    <th data-i18n="col.department">DEPARTMENT</th>
+                                    <th data-i18n="col.team">TEAM</th>
+                                    <th data-i18n="col.assignees">ASSIGNEES</th>
+                                    <th data-i18n="col.customer">CUSTOMER</th>
+                                    <th data-i18n="col.deadline">DEADLINE</th>
+                                    <th data-i18n="col.priority">PRIORITY</th>
+                                    <th data-i18n="col.status">STATUS</th>
+                                    <th data-i18n="col.actions">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="all-tasks-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== DEPARTMENTS VIEW ===== -->
+            <section id="view-departments" class="view-section">
+                <div class="card full-height">
+                    <div class="card-header border-bottom">
+                        <h2 data-i18n="depts.title">Departments</h2>
+                        <button class="btn btn-primary" id="btn-add-dept">
+                            <i class="fa-solid fa-plus"></i> <span data-i18n="depts.add">Add Department</span>
+                        </button>
+                    </div>
+                    <div class="table-container p-4">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th data-i18n="col.deptName">DEPARTMENT NAME</th>
+                                    <th data-i18n="col.actions">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="departments-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== TEAMS VIEW ===== -->
+            <section id="view-teams" class="view-section">
+                <div class="card full-height">
+                    <div class="card-header border-bottom">
+                        <h2 data-i18n="teams.title">Teams</h2>
+                        <button class="btn btn-primary" id="btn-add-team">
+                            <i class="fa-solid fa-plus"></i> <span data-i18n="teams.add">Form Team</span>
+                        </button>
+                    </div>
+                    <div class="table-container p-4">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="col.teamName">TEAM NAME</th>
+                                    <th data-i18n="col.parentDept">PARENT DEPARTMENT</th>
+                                    <th data-i18n="col.fields">TEAM FIELDS</th>
+                                    <th data-i18n="col.actions">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teams-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== CUSTOMERS VIEW ===== -->
+            <section id="view-customers" class="view-section">
+                <div class="card full-height">
+                    <div class="card-header border-bottom">
+                        <h2 data-i18n="cust.title">Customers</h2>
+                        <button class="btn btn-primary" id="btn-add-customer">
+                            <i class="fa-solid fa-plus"></i> <span data-i18n="cust.add">Add Customer</span>
+                        </button>
+                    </div>
+                    <div class="table-container p-4">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="col.custName">CUSTOMER NAME</th>
+                                    <th data-i18n="col.location">LOCATION / SITE</th>
+                                    <th data-i18n="col.actions">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customers-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== EQUIPMENT VIEW ===== -->
+            <section id="view-equipment" class="view-section">
+                <div class="card full-height">
+                    <div class="card-header border-bottom">
+                        <h2 data-i18n="equip.title">Company Equipment</h2>
+                        <button class="btn btn-primary" id="btn-add-equipment">
+                            <i class="fa-solid fa-plus"></i> <span data-i18n="equip.add">Add Equipment</span>
+                        </button>
+                    </div>
+                    <div class="table-container p-4">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="col.assetName">ASSET NAME</th>
+                                    <th data-i18n="col.type">TYPE</th>
+                                    <th data-i18n="col.status">STATUS</th>
+                                    <th data-i18n="col.actions">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="equipment-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== MEMBERS VIEW ===== -->
+            <section id="view-members" class="view-section">
+                <div class="card full-height">
+                    <div class="card-header border-bottom">
+                        <h2 data-i18n="members.title">Team Members</h2>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-neon btn-sm" id="btn-export-members-csv">
+                                <i class="fa-solid fa-download"></i> CSV
+                            </button>
+                            <button class="btn btn-primary" id="btn-add-member">
+                                <i class="fa-solid fa-plus"></i> <span data-i18n="members.add">Add Member</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="filter-bar" id="members-filter-bar">
+                        <div>
+                            <label data-i18n="filter.team">Team</label>
+                            <select id="filter-member-team">
+                                <option value="">All Teams</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label data-i18n="filter.role">Role</label>
+                            <select id="filter-member-role">
+                                <option value="">All Roles</option>
+                                <option value="Team Leader">Team Leader</option>
+                                <option value="Team Worker">Team Worker</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label data-i18n="filter.availability">Availability</label>
+                            <select id="filter-member-avail">
+                                <option value="">All</option>
+                                <option value="Available">Available</option>
+                                <option value="Not Available">Not Available</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-container p-4">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="col.name">NAME</th>
+                                    <th data-i18n="col.role">ROLE</th>
+                                    <th data-i18n="col.contractType">CONTRACT</th>
+                                    <th data-i18n="col.hiringDate">HIRING DATE</th>
+                                    <th data-i18n="col.team">TEAM</th>
+                                    <th data-i18n="col.department">DEPARTMENT</th>
+                                    <th data-i18n="col.availability">AVAILABILITY</th>
+                                    <th data-i18n="col.actions">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="members-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== STATS VIEW ===== -->
+            <section id="view-stats" class="view-section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+                    <h2 data-i18n="stats.title">Reports & Statistics</h2>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <select id="stats-timeframe" class="btn btn-outline" style="background:var(--bg-card);color:var(--text-primary);padding:8px 12px;border-radius:var(--radius-sm);">
+                            <option value="Daily">Daily</option>
+                            <option value="Weekly">Weekly</option>
+                            <option value="Monthly" selected>Monthly</option>
+                        </select>
+                        <button class="btn btn-neon btn-sm" id="btn-export-report-csv">
+                            <i class="fa-solid fa-download"></i> CSV
+                        </button>
+                        <button class="btn btn-primary btn-sm" id="btn-export-report-pdf">
+                            <i class="fa-solid fa-file-pdf"></i> PDF
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa-solid fa-chart-pie"></i></div>
+                        <div class="stat-value" id="stats-total">0</div>
+                        <div class="stat-label" data-i18n="stats.totalTimeframe">Total in Timeframe</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa-solid fa-check text-success"></i></div>
+                        <div class="stat-value text-success" id="stats-completed">0</div>
+                        <div class="stat-label" data-i18n="stats.completed">Completed</div>
+                    </div>
+                </div>
+
+                <div class="main-grid">
+                    <div class="card">
+                        <div class="card-header border-bottom">
+                            <h2 data-i18n="stats.teamPerf">Team Performance</h2>
+                        </div>
+                        <div class="table-container p-4">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="col.team">TEAM</th>
+                                        <th data-i18n="col.completed">COMPLETED</th>
+                                        <th data-i18n="col.pending">PENDING</th>
+                                        <th data-i18n="col.total">TOTAL</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stats-team-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header border-bottom">
+                            <h2 data-i18n="stats.workerPerf">Worker Performance</h2>
+                        </div>
+                        <div class="table-container p-4">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="col.worker">WORKER</th>
+                                        <th data-i18n="col.team">TEAM</th>
+                                        <th data-i18n="col.completed">COMPLETED</th>
+                                        <th data-i18n="col.pending">PENDING</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stats-worker-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== FINANCE VIEW ===== -->
+            <section id="view-finance" class="view-section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+                    <h2 data-i18n="fin.title">Finance & Payroll</h2>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <select id="finance-timeframe" class="btn btn-outline" style="background:var(--bg-card);color:var(--text-primary);padding:8px 12px;border-radius:var(--radius-sm);">
+                            <option value="All Time">All Time</option>
+                            <option value="Daily">Daily</option>
+                            <option value="Weekly">Weekly</option>
+                            <option value="Monthly" selected>Monthly</option>
+                        </select>
+                        <button class="btn btn-neon btn-sm" id="btn-export-finance-csv">
+                            <i class="fa-solid fa-download"></i> CSV
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Finance Summary Cards -->
+                <div class="finance-summary-grid" id="finance-summary-grid">
+                    <div class="finance-summary-card">
+                        <div class="value text-success" id="fin-total-revenue">0 XAF</div>
+                        <div class="label" data-i18n="fin.revenue">Revenue</div>
+                    </div>
+                    <div class="finance-summary-card">
+                        <div class="value text-warning" id="fin-total-payroll">0 XAF</div>
+                        <div class="label" data-i18n="fin.payroll">Payroll</div>
+                    </div>
+                    <div class="finance-summary-card">
+                        <div class="value text-danger" id="fin-total-expenses">0 XAF</div>
+                        <div class="label" data-i18n="fin.expenses">Expenses</div>
+                    </div>
+                    <div class="finance-summary-card">
+                        <div class="value text-neon" id="fin-net">0 XAF</div>
+                        <div class="label" data-i18n="fin.net">Net</div>
+                    </div>
+                </div>
+
+                <!-- Customer Billing -->
+                <div class="card" style="margin-bottom:24px;">
+                    <div class="card-header border-bottom">
+                        <h2 data-i18n="fin.billing">Customer Billing (Completed Tasks)</h2>
+                    </div>
+                    <div class="table-container p-4">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="col.task">TASK</th>
+                                    <th data-i18n="col.customer">CUSTOMER</th>
+                                    <th data-i18n="col.paymentStatus">PAYMENT STATUS</th>
+                                    <th data-i18n="col.amount">AMOUNT</th>
+                                    <th data-i18n="col.method">METHOD</th>
+                                    <th data-i18n="col.actions">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="finance-billing-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Worker Payroll -->
+                <div class="main-grid" style="margin-bottom:24px;">
+                    <div class="card">
+                        <div class="card-header border-bottom">
+                            <h2 data-i18n="fin.payrollLedger">Worker Payroll Ledger</h2>
+                            <button class="btn btn-primary btn-sm" id="btn-pay-worker">
+                                <i class="fa-solid fa-plus"></i> <span data-i18n="fin.payWorker">Pay Worker</span>
+                            </button>
+                        </div>
+                        <div class="table-container p-4">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="col.worker">WORKER</th>
+                                        <th data-i18n="col.team">TEAM</th>
+                                        <th data-i18n="col.totalPaid">TOTAL PAID</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="finance-payroll-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header border-bottom">
+                            <h2 data-i18n="fin.paymentsLog">Recent Payments Log</h2>
+                        </div>
+                        <div class="table-container p-4">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="col.worker">WORKER</th>
+                                        <th data-i18n="col.amount">AMOUNT</th>
+                                        <th data-i18n="col.method">METHOD</th>
+                                        <th data-i18n="col.date">DATE</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="finance-payments-log"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expenses -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:32px;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+                    <h2 data-i18n="fin.allowances">Company Allowances & Expenses</h2>
+                    <button class="btn btn-primary" id="btn-log-expense">
+                        <i class="fa-solid fa-plus"></i> <span data-i18n="fin.logExpense">Log Expense</span>
+                    </button>
+                </div>
+                <div class="main-grid">
+                    <div class="card">
+                        <div class="card-header border-bottom">
+                            <h2 data-i18n="fin.expensesByDept">Expenses by Department</h2>
+                        </div>
+                        <div class="table-container p-4">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="col.department">DEPARTMENT</th>
+                                        <th data-i18n="col.totalExpenses">TOTAL EXPENSES</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="finance-expenses-dept-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header border-bottom">
+                            <h2 data-i18n="fin.expensesLog">Recent Allowances Log</h2>
+                        </div>
+                        <div class="table-container p-4">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="col.worker">WORKER</th>
+                                        <th data-i18n="col.type">TYPE</th>
+                                        <th data-i18n="col.description">DESCRIPTION</th>
+                                        <th data-i18n="col.amount">AMOUNT</th>
+                                        <th data-i18n="col.date">DATE</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="finance-expenses-log"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== SALES DEPARTMENT ===== -->
+            <section id="view-sales" class="view-section">
+                <!-- Sales Stats -->
+                <div class="section-header">
+                    <h2 data-i18n="sales.title">Sales Department</h2>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-outline btn-sm" id="btn-export-products-csv"><i class="fa-solid fa-download"></i> <span data-i18n="sales.exportProducts">Export Products</span></button>
+                        <button class="btn btn-outline btn-sm" id="btn-export-sales-csv"><i class="fa-solid fa-download"></i> <span data-i18n="sales.exportSales">Export Sales</span></button>
+                    </div>
+                </div>
+                <div class="stat-cards" id="sales-stat-cards">
+                    <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-boxes-stacked"></i></div><div class="stat-info"><h3 id="sales-stat-products">0</h3><p data-i18n="sales.totalProducts">Total Products</p></div></div>
+                    <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-coins"></i></div><div class="stat-info"><h3 id="sales-stat-inv-value">0</h3><p data-i18n="sales.inventoryValue">Inventory Value</p></div></div>
+                    <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-receipt"></i></div><div class="stat-info"><h3 id="sales-stat-total-sales">0</h3><p data-i18n="sales.totalSales">Total Sales</p></div></div>
+                    <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-money-bill-trend-up"></i></div><div class="stat-info"><h3 id="sales-stat-revenue">0</h3><p data-i18n="sales.salesRevenue">Sales Revenue</p></div></div>
+                    <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="stat-info"><h3 id="sales-stat-low-stock">0</h3><p data-i18n="sales.lowStock">Low Stock Items</p></div></div>
+                </div>
+
+                <!-- Products Catalog -->
+                <div class="card" style="margin-top:20px;">
+                    <div class="card-header">
+                        <h3 data-i18n="sales.products">Products Catalog</h3>
+                        <button class="btn btn-primary btn-sm" id="btn-add-product"><i class="fa-solid fa-plus"></i> <span data-i18n="sales.addProduct">Add Product</span></button>
+                    </div>
+                    <div class="filter-bar" style="margin-bottom:12px;">
+                        <select id="filter-product-category"><option value="">All Categories</option><option value="Electronics">Electronics</option><option value="Materials">Materials</option><option value="Safety">Safety</option><option value="Tools">Tools</option><option value="General">General</option></select>
+                        <select id="filter-product-stock"><option value="">All Stock</option><option value="ok">In Stock</option><option value="low">Low Stock</option><option value="out">Out of Stock</option></select>
+                        <input type="text" id="filter-product-search" placeholder="Search products...">
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="sales.barcode">BARCODE</th>
+                                    <th data-i18n="sales.product">PRODUCT</th>
+                                    <th data-i18n="sales.category">CATEGORY</th>
+                                    <th data-i18n="sales.unitPrice">UNIT PRICE</th>
+                                    <th data-i18n="sales.inStock">IN STOCK</th>
+                                    <th data-i18n="sales.stockStatus">STATUS</th>
+                                    <th data-i18n="col.actions">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="products-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Point of Sale -->
+                <div class="card" style="margin-top:20px;">
+                    <div class="card-header"><h3 data-i18n="sales.pos">Point of Sale</h3></div>
+                    <div class="pos-container">
+                        <div class="pos-main">
+                            <div class="pos-scanner">
+                                <input type="text" id="pos-barcode-input" placeholder="Scan or type barcode..." autocomplete="off" autofocus>
+                                <button class="btn btn-outline" id="btn-scan-camera" title="Scan Camera"><i class="fa-solid fa-camera"></i></button>
+                            </div>
+                            <div id="pos-camera-preview" class="pos-camera-preview" style="display:none;"></div>
+                            <div class="table-wrapper">
+                                <table class="data-table pos-cart-table">
+                                    <thead>
+                                        <tr>
+                                            <th data-i18n="sales.product">PRODUCT</th>
+                                            <th data-i18n="sales.barcode">BARCODE</th>
+                                            <th data-i18n="sales.qty">QTY</th>
+                                            <th data-i18n="sales.unitPrice">UNIT PRICE</th>
+                                            <th data-i18n="sales.lineTotal">LINE TOTAL</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pos-cart-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="pos-sidebar">
+                            <h4 data-i18n="sales.cart">Cart</h4>
+                            <div class="pos-total" id="pos-cart-total">0 XAF</div>
+                            <div class="form-group">
+                                <label data-i18n="sales.paymentMethod">Payment Method</label>
+                                <select id="pos-payment-method">
+                                    <option value="Cash">Cash</option>
+                                    <option value="Mobile Money">Mobile Money</option>
+                                    <option value="Bank Transfer">Bank Transfer</option>
+                                    <option value="Card">Card</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary" id="btn-complete-sale" style="width:100%;margin-top:12px;">
+                                <i class="fa-solid fa-check-circle"></i> <span data-i18n="sales.completeSale">Complete Sale</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sales History -->
+                <div class="card" style="margin-top:20px;">
+                    <div class="card-header">
+                        <h3 data-i18n="sales.history">Sales History</h3>
+                        <select id="sales-timeframe" class="filter-select">
+                            <option value="7">Last 7 days</option>
+                            <option value="30" selected>Last 30 days</option>
+                            <option value="90">Last 90 days</option>
+                            <option value="all">All Time</option>
+                        </select>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="sales.saleNum">SALE #</th>
+                                    <th data-i18n="col.date">DATE</th>
+                                    <th data-i18n="sales.items">ITEMS</th>
+                                    <th data-i18n="sales.total">TOTAL</th>
+                                    <th data-i18n="sales.payment">PAYMENT</th>
+                                    <th data-i18n="col.actions">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sales-history-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Inventory Alerts -->
+                <div class="card" style="margin-top:20px;">
+                    <div class="card-header"><h3 data-i18n="sales.alerts">Inventory Alerts</h3></div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="sales.barcode">BARCODE</th>
+                                    <th data-i18n="sales.product">PRODUCT</th>
+                                    <th data-i18n="sales.inStock">IN STOCK</th>
+                                    <th>MIN STOCK</th>
+                                    <th data-i18n="sales.stockStatus">STATUS</th>
+                                    <th data-i18n="col.actions">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-alerts-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ========== MODALS ========== -->
+
+    <!-- Task Modal -->
+    <div class="modal" id="modal-task">
+        <div class="modal-content" style="max-width:560px;">
+            <div class="modal-header">
+                <h2 data-i18n="modal.createTask">Create New Task</h2>
+                <button class="close-btn" data-close="task"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-task">
+                <div class="form-group">
+                    <label data-i18n="form.taskTitle">Task Title</label>
+                    <input type="text" id="task-title" required placeholder="e.g. Upgrade Server RAM">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.customer">Customer (Site)</label>
+                    <select id="task-customer" required></select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-i18n="form.startDate">Start Date</label>
+                        <input type="date" id="task-startDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="form.deadline">Deadline Date</label>
+                        <input type="date" id="task-deadlineDate" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.department">Department</label>
+                    <select id="task-department" required></select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.team">Team</label>
+                    <select id="task-team" required></select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.assignees">Assignees (Workers)</label>
+                    <div class="checkbox-hint" id="task-avail-hint">Select a team to view workers</div>
+                    <div class="checkbox-container" id="task-assignees-container">
+                        <span style="color:var(--text-secondary);font-size:13px;" data-i18n="form.selectTeam">Select a team to view available workers.</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.equipment">Assigned Equipment</label>
+                    <div class="equipment-list" id="task-equipment-list">
+                        <span style="color:var(--text-secondary);font-size:13px;" data-i18n="form.selectEquip">Available equipment will appear here.</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.instructions">Instructions</label>
+                    <textarea id="task-instructions" rows="3" placeholder="Enter task instructions here..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-i18n="form.priority">Priority</label>
+                        <select id="task-priority">
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="form.status">Status</label>
+                        <select id="task-status">
+                            <option value="Pending">Pending</option>
+                            <option value="Active">Active</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="task" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="btn.saveTask">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Department Modal -->
+    <div class="modal" id="modal-department">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="modal.addDept">Add Department</h2>
+                <button class="close-btn" data-close="department"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-department">
+                <div class="form-group">
+                    <label data-i18n="form.deptName">Department Name</label>
+                    <input type="text" id="dept-name" required placeholder="e.g. Networking">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="department" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="btn.complete">Complete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Team Modal -->
+    <div class="modal" id="modal-team">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="modal.formTeam">Form Team</h2>
+                <button class="close-btn" data-close="team"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-team">
+                <div class="form-group">
+                    <label data-i18n="form.teamName">Team Name</label>
+                    <input type="text" id="team-name" required placeholder="e.g. Alpha Unit">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.parentDept">Parent Department</label>
+                    <select id="team-department" required></select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.teamFields">Team Fields (specializations)</label>
+                    <input type="text" id="team-fields" placeholder="e.g. Frontend, Networking, Database">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="team" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="btn.complete">Complete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Customer Modal -->
+    <div class="modal" id="modal-customer">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="modal.addCustomer">Add Customer</h2>
+                <button class="close-btn" data-close="customer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-customer">
+                <div class="form-group">
+                    <label data-i18n="form.custName">Customer Name</label>
+                    <input type="text" id="customer-name" required placeholder="e.g. Acme Corp">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.custLocation">Location / Site</label>
+                    <input type="text" id="customer-location" required placeholder="e.g. Libreville HQ">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="customer" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="btn.complete">Complete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Equipment Modal -->
+    <div class="modal" id="modal-equipment">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="modal.addEquip">Add Equipment</h2>
+                <button class="close-btn" data-close="equipment"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-equipment">
+                <div class="form-group">
+                    <label data-i18n="form.assetName">Asset Name</label>
+                    <input type="text" id="equipment-name" required placeholder="e.g. Ford Transit #1">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.assetType">Asset Type</label>
+                    <select id="equipment-type" required>
+                        <option value="Vehicle">Vehicle</option>
+                        <option value="Tool">Tool</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="equipment" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="btn.addAsset">Add Asset</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Member Modal -->
+    <div class="modal" id="modal-member">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="modal.addMember">Add Team Member</h2>
+                <button class="close-btn" data-close="member"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-member">
+                <div class="form-group">
+                    <label data-i18n="form.memberName">Member Name</label>
+                    <input type="text" id="member-name" required placeholder="e.g. Jean Moussavou">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-i18n="form.role">Role</label>
+                        <select id="member-role" required>
+                            <option value="Team Leader">Team Leader</option>
+                            <option value="Team Worker">Team Worker</option>
+                            <option value="Admin">Administrator</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="form.contractType">Contract Type</label>
+                        <select id="member-type" required>
+                            <option value="Full-Time">Full-Time</option>
+                            <option value="Part-Time">Part-Time</option>
+                            <option value="Contractor">Contractor</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="member-password-section">
+                    <div class="form-group">
+                        <label data-i18n="form.password">Password</label>
+                        <input type="password" id="member-password" required placeholder="Min 8 chars, upper, lower, number, symbol" minlength="8">
+                        <div id="member-pw-strength" style="font-size:11px;margin-top:4px;font-weight:600;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="form.confirmPw">Confirm Password</label>
+                        <input type="password" id="member-password-confirm" required placeholder="Re-enter password">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.hiringDate">Hiring Date</label>
+                    <input type="date" id="member-hiring-date" required>
+                </div>
+                <div id="member-team-fields">
+                    <div class="form-group">
+                        <label data-i18n="form.deptFilter">Department (Filters Teams)</label>
+                        <select id="member-department"></select>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="form.team">Team</label>
+                        <select id="member-team"></select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="member" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="btn.complete">Complete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Instruction Modal -->
+    <div class="modal" id="modal-instruction">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="modal.instructions">Task Instructions</h2>
+                <button class="close-btn" data-close="instruction"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-instruction">
+                <input type="hidden" id="instruction-task-id">
+                <div class="form-group">
+                    <label data-i18n="form.instructionDetails">Instructions Details</label>
+                    <textarea id="instruction-text" rows="6" required placeholder="Write or update instructions here..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="instruction" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="btn.saveInstructions">Save Instructions</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Customer Payment Modal -->
+    <div class="modal" id="modal-customer-payment">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="modal.recordPayment">Record Customer Payment</h2>
+                <button class="close-btn" data-close="customer-payment"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-customer-payment">
+                <input type="hidden" id="customer-payment-task-id">
+                <div class="form-group">
+                    <label data-i18n="form.amountXAF">Amount Paid (XAF)</label>
+                    <input type="number" step="0.001" id="customer-payment-amount" required placeholder="e.g. 500000">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.paymentMethod">Payment Method</label>
+                    <select id="customer-payment-method" required>
+                        <option value="Cash">Cash</option>
+                        <option value="Mobile Money">Mobile Money</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="customer-payment" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="btn.savePayment">Save Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Worker Payment Modal -->
+    <div class="modal" id="modal-worker-payment">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="modal.recordWorkerPay">Record Worker Payment</h2>
+                <button class="close-btn" data-close="worker-payment"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-worker-payment">
+                <div class="form-group">
+                    <label data-i18n="form.worker">Worker</label>
+                    <select id="wp-worker" required></select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.amountXAF">Amount (XAF)</label>
+                    <input type="number" step="0.001" id="wp-amount" required placeholder="e.g. 150000">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.paymentMethod">Payment Method</label>
+                    <select id="wp-method" required>
+                        <option value="Cash">Cash</option>
+                        <option value="Mobile Money">Mobile Money</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.date">Date</label>
+                    <input type="date" id="wp-date" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="worker-payment" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="btn.savePayment">Save Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Expense Modal -->
+    <div class="modal" id="modal-expense">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="modal.logExpense">Log Worker Expense</h2>
+                <button class="close-btn" data-close="expense"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-expense">
+                <div class="form-group">
+                    <label data-i18n="form.worker">Worker</label>
+                    <select id="exp-worker" required></select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.expenseType">Type</label>
+                    <select id="exp-type" required>
+                        <option value="Taxi / Transport">Taxi / Transport</option>
+                        <option value="Food / Meals">Food / Meals</option>
+                        <option value="Lodging">Lodging</option>
+                        <option value="Materials">Materials</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.description">Description</label>
+                    <input type="text" id="exp-desc" placeholder="Brief description">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.amountXAF">Amount (XAF)</label>
+                    <input type="number" step="0.001" id="exp-amount" required placeholder="e.g. 25000">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.date">Date</label>
+                    <input type="date" id="exp-date" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="expense" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="btn.logExpense">Log Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal" id="modal-change-password">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="modal.changePassword">Change Password</h2>
+                <button class="close-btn" data-close="change-password"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-change-password">
+                <div class="form-group">
+                    <label data-i18n="form.currentPw">Current Password</label>
+                    <input type="password" id="pw-current" required>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.newPw">New Password</label>
+                    <input type="password" id="pw-new" required>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.confirmPw">Confirm New Password</label>
+                    <input type="password" id="pw-confirm" required>
+                </div>
+                <div id="pw-error" class="form-error"></div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="change-password" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="btn.updatePassword">Update Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal (Admin) -->
+    <div class="modal" id="modal-reset-password">
+        <div class="modal-content" style="max-width:440px;">
+            <div class="modal-header">
+                <h2>Reset Password</h2>
+                <button class="close-btn" data-close="reset-password"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-reset-password">
+                <input type="hidden" id="reset-pw-member-id">
+                <div class="form-group">
+                    <label>Member: <strong id="reset-pw-member-name"></strong></label>
+                </div>
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="reset-pw-new" required minlength="8" placeholder="Min 8 chars, upper, lower, number, symbol">
+                    <div id="reset-pw-strength" style="font-size:11px;margin-top:4px;font-weight:600;"></div>
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" id="reset-pw-confirm" required placeholder="Re-enter password">
+                </div>
+                <div id="reset-pw-error" class="form-error" style="display:none;"></div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="reset-password">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Dialog Modal -->
+    <div class="modal" id="modal-confirm">
+        <div class="modal-content" style="max-width:400px;">
+            <div class="modal-header">
+                <h2 data-i18n="modal.confirm">Confirm Action</h2>
+                <button class="close-btn" data-close="confirm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="confirm-body">
+                <p id="confirm-message">Are you sure?</p>
+                <div class="btn-group">
+                    <button class="btn btn-outline" data-close="confirm" data-i18n="btn.cancel">Cancel</button>
+                    <button class="btn btn-danger" id="confirm-yes-btn" data-i18n="btn.confirm">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Modal -->
+    <div class="modal" id="modal-product">
+        <div class="modal-content" style="max-width:500px;">
+            <div class="modal-header">
+                <h2 data-i18n="modal.addProduct">Add Product</h2>
+                <button class="close-btn" data-close="product"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-product">
+                <div class="form-group">
+                    <label data-i18n="form.barcode">Barcode</label>
+                    <input type="text" id="product-barcode" required placeholder="EAN-13, UPC, or custom">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.productName">Product Name</label>
+                    <input type="text" id="product-name" required>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.category">Category</label>
+                    <select id="product-category" required>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Materials">Materials</option>
+                        <option value="Safety">Safety</option>
+                        <option value="Tools">Tools</option>
+                        <option value="General">General</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="form.description">Description</label>
+                    <input type="text" id="product-description" placeholder="Optional description">
+                </div>
+                <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                    <div class="form-group">
+                        <label data-i18n="form.unitPrice">Unit Price (XAF)</label>
+                        <input type="number" id="product-unit-price" required min="0">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="form.quantity">Quantity</label>
+                        <input type="number" id="product-quantity" required min="0">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="form.minStock">Min Stock</label>
+                        <input type="number" id="product-min-stock" required min="0" value="5">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="product" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="btn.complete">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sale Detail Modal -->
+    <div class="modal" id="modal-sale-detail">
+        <div class="modal-content" style="max-width:560px;">
+            <div class="modal-header">
+                <h2 data-i18n="modal.saleDetail">Sale Details</h2>
+                <button class="close-btn" data-close="sale-detail"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="sale-detail-content" style="padding:20px;"></div>
+            <div class="form-actions" style="padding:0 20px 20px;">
+                <button type="button" class="btn btn-outline" data-close="sale-detail" data-i18n="btn.cancel">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Restock Modal -->
+    <div class="modal" id="modal-restock">
+        <div class="modal-content" style="max-width:400px;">
+            <div class="modal-header">
+                <h2 data-i18n="modal.restock">Restock Product</h2>
+                <button class="close-btn" data-close="restock"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-restock">
+                <input type="hidden" id="restock-product-id">
+                <div class="form-group">
+                    <label>Product: <strong id="restock-product-name"></strong></label>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="sales.currentStock">Current Stock</label>
+                    <input type="number" id="restock-current" disabled>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="sales.addQty">Quantity to Add</label>
+                    <input type="number" id="restock-qty" required min="1" value="1">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" data-close="restock" data-i18n="btn.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Restock</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Eddymo Branding Badge -->
+    <div class="eddymo-badge">Eddymo 3.1</div>
+
+    <!-- Copyright Footer -->
+    <div class="copyright-footer">&copy; 2026 EMS-Gabon Powered by Eddymo 3.1</div>
+
+    <!-- CDN Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
