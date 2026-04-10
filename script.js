@@ -17,6 +17,14 @@ const CONFIG = {
     TABLES: ['departments','teams','members','customers','equipment','tasks','workerPayments','expenses','customerPayments','products','sales']
 };
 
+// HTML escape utility to prevent XSS
+function _esc(str) {
+    if (str === null || str === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+}
+
 const PasswordUtil = {
     validate(pw) {
         const checks = {
@@ -598,7 +606,7 @@ const UI = {
         const icons = { success:'fa-check-circle', error:'fa-exclamation-circle', warning:'fa-exclamation-triangle', info:'fa-info-circle' };
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i> ${message}`;
+        toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i> ${_esc(message)}`;
         container.appendChild(toast);
         setTimeout(() => { if (toast.parentNode) toast.remove(); }, 3200);
     },
@@ -677,16 +685,19 @@ const UI = {
     },
 
     renderAll() {
+        // Always render dashboard (stats visible on load)
         DashboardModule.render();
-        TasksModule.render();
-        DepartmentsModule.render();
-        TeamsModule.render();
-        CustomersModule.render();
-        EquipmentModule.render();
-        MembersModule.render();
-        ReportsModule.render();
-        FinanceModule.render();
-        SalesModule.render();
+        // Only render the active tab's module for performance
+        const tab = this.currentTab;
+        if (tab === 'tasks') TasksModule.render();
+        else if (tab === 'departments') DepartmentsModule.render();
+        else if (tab === 'teams') TeamsModule.render();
+        else if (tab === 'customers') CustomersModule.render();
+        else if (tab === 'equipment') EquipmentModule.render();
+        else if (tab === 'members') MembersModule.render();
+        else if (tab === 'stats') ReportsModule.render();
+        else if (tab === 'finance') FinanceModule.render();
+        else if (tab === 'sales') SalesModule.render();
     },
 
     globalSearch(query) {
@@ -751,7 +762,7 @@ const DashboardModule = {
             const assignees = this._getAssigneeNames(task);
             const equipHtml = this._getEquipmentHtml(task);
             return `<tr>
-                <td><strong>${this._esc(task.title)}</strong>${equipHtml}</td>
+                <td><strong>${_esc(task.title)}</strong>${equipHtml}</td>
                 <td>${this._getDeptName(task.departmentId)}</td>
                 <td>${this._getTeamName(task.teamId)}</td>
                 <td>${assignees}</td>
@@ -770,7 +781,7 @@ const DashboardModule = {
         }).join('');
     },
 
-    _esc(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; },
+    // _esc is now a global function
     _getDeptName(id) { const d = DataStore.getById('departments', id); return d ? d.name : 'Unknown'; },
     _getTeamName(id) { const t = DataStore.getById('teams', id); return t ? t.name : 'Unknown'; },
     _getAssigneeNames(task) {
@@ -837,7 +848,7 @@ const TasksModule = {
             const assignees = DashboardModule._getAssigneeNames(task);
             const equipHtml = DashboardModule._getEquipmentHtml(task);
             return `<tr>
-                <td><strong>${DashboardModule._esc(task.title)}</strong>${equipHtml}</td>
+                <td><strong>${_esc(task.title)}</strong>${equipHtml}</td>
                 <td>${DashboardModule._getDeptName(task.departmentId)}</td>
                 <td>${DashboardModule._getTeamName(task.teamId)}</td>
                 <td>${assignees}</td>
@@ -1021,11 +1032,20 @@ const TasksModule = {
         const assigneeIds = Array.from(assigneeEls).map(el => parseInt(el.value));
         const equipmentIds = Array.from(equipEls).map(el => parseInt(el.value));
 
+        const startDate = document.getElementById('task-startDate').value;
+        const deadlineDate = document.getElementById('task-deadlineDate').value;
+
+        // Validate deadline is not before start date
+        if (startDate && deadlineDate && deadlineDate < startDate) {
+            UI.toast('Deadline cannot be before the start date.', 'error');
+            return;
+        }
+
         const data = {
             title: document.getElementById('task-title').value.trim(),
             customerId: parseInt(document.getElementById('task-customer').value),
-            startDate: document.getElementById('task-startDate').value,
-            deadlineDate: document.getElementById('task-deadlineDate').value,
+            startDate,
+            deadlineDate,
             departmentId: parseInt(document.getElementById('task-department').value),
             teamId: parseInt(document.getElementById('task-team').value),
             assigneeIds,
@@ -1162,7 +1182,7 @@ const DepartmentsModule = {
         }
         tbody.innerHTML = depts.map(d => `<tr>
             <td>DEP-${String(d.id).padStart(3,'0')}</td>
-            <td><strong>${DashboardModule._esc(d.name)}</strong></td>
+            <td><strong>${_esc(d.name)}</strong></td>
             <td>${Auth.isAdmin() ? `<button class="btn btn-outline btn-sm" onclick="DepartmentsModule.openEditModal(${d.id})" title="Edit"><i class="fa-solid fa-pen"></i></button> <button class="btn btn-outline btn-sm text-danger" onclick="DepartmentsModule.delete(${d.id})"><i class="fa-solid fa-trash"></i></button>` : ''}</td>
         </tr>`).join('');
     },
@@ -1182,8 +1202,16 @@ const DepartmentsModule = {
     },
     async delete(id) {
         if (!Auth.isAdmin()) return;
-        const confirmed = await UI.confirm(I18n.t('msg.deleteConfirm'));
+        const confirmed = await UI.confirm(I18n.t('msg.deleteConfirm') + ' This will also delete all teams and unassign members in this department.');
         if (!confirmed) return;
+        // Cascade: delete child teams and unassign their members
+        const childTeams = DataStore.query('teams', t => t.departmentId === id);
+        childTeams.forEach(team => {
+            DataStore.query('members', m => m.teamId === team.id).forEach(m => {
+                DataStore.update('members', m.id, { teamId: null });
+            });
+            DataStore.delete('teams', team.id);
+        });
         DataStore.delete('departments', id);
         UI.toast(I18n.t('msg.deleted'), 'info');
         UI.renderAll();
@@ -1220,7 +1248,7 @@ const TeamsModule = {
             return;
         }
         tbody.innerHTML = teams.map(t => `<tr>
-            <td><strong>${DashboardModule._esc(t.name)}</strong></td>
+            <td><strong>${_esc(t.name)}</strong></td>
             <td>${DashboardModule._getDeptName(t.departmentId)}</td>
             <td>${t.fields || 'N/A'}</td>
             <td>${Auth.isAdmin() ? `<button class="btn btn-outline btn-sm" onclick="TeamsModule.openEditModal(${t.id})" title="Edit"><i class="fa-solid fa-pen"></i></button> <button class="btn btn-outline btn-sm text-danger" onclick="TeamsModule.delete(${t.id})"><i class="fa-solid fa-trash"></i></button>` : ''}</td>
@@ -1256,8 +1284,12 @@ const TeamsModule = {
     },
     async delete(id) {
         if (!Auth.isAdmin()) return;
-        const confirmed = await UI.confirm(I18n.t('msg.deleteConfirm'));
+        const confirmed = await UI.confirm(I18n.t('msg.deleteConfirm') + ' Members in this team will be unassigned.');
         if (!confirmed) return;
+        // Cascade: unassign members from this team
+        DataStore.query('members', m => m.teamId === id).forEach(m => {
+            DataStore.update('members', m.id, { teamId: null });
+        });
         DataStore.delete('teams', id);
         UI.toast(I18n.t('msg.deleted'), 'info');
         UI.renderAll();
@@ -1298,8 +1330,8 @@ const CustomersModule = {
             return;
         }
         tbody.innerHTML = custs.map(c => `<tr>
-            <td><strong>${DashboardModule._esc(c.name)}</strong></td>
-            <td>${DashboardModule._esc(c.location)}</td>
+            <td><strong>${_esc(c.name)}</strong></td>
+            <td>${_esc(c.location)}</td>
             <td>${Auth.isAdmin() ? `<button class="btn btn-outline btn-sm" onclick="CustomersModule.openEditModal(${c.id})" title="Edit"><i class="fa-solid fa-pen"></i></button> <button class="btn btn-outline btn-sm text-danger" onclick="CustomersModule.delete(${c.id})"><i class="fa-solid fa-trash"></i></button>` : ''}</td>
         </tr>`).join('');
     },
@@ -1368,7 +1400,7 @@ const EquipmentModule = {
             const statusClass = eq.status === 'Available' ? 'status-completed' : 'status-active';
             const inUse = eq.status === 'In Use';
             return `<tr>
-                <td><strong>${DashboardModule._esc(eq.name)}</strong></td>
+                <td><strong>${_esc(eq.name)}</strong></td>
                 <td>${icon}</td>
                 <td><span class="status-badge ${statusClass}">${eq.status}</span></td>
                 <td>${Auth.isAdmin() ? `<button class="btn btn-outline btn-sm" onclick="EquipmentModule.openEditModal(${eq.id})" title="Edit"><i class="fa-solid fa-pen"></i></button> <button class="btn btn-outline btn-sm text-danger" onclick="EquipmentModule.delete(${eq.id})" ${inUse ? 'disabled title="'+I18n.t('msg.cannotDeleteEquip')+'"' : ''}><i class="fa-solid fa-trash"></i></button>` : ''}</td>
@@ -1494,7 +1526,7 @@ const MembersModule = {
             const acctBtn = Auth.isAdmin() ? `<button class="btn btn-outline btn-sm ${isActive ? '' : 'text-danger'}" onclick="MembersModule.toggleAccountStatus(${m.id})" title="${isActive ? 'Deactivate' : 'Activate'}"><i class="fa-solid ${isActive ? 'fa-user-check' : 'fa-user-slash'}"></i></button>` : '';
 
             return `<tr${!isActive ? ' style="opacity:0.5"' : ''}>
-                <td><strong>${DashboardModule._esc(m.name)}</strong>${!isActive ? ' <span class="status-badge status-pending" style="font-size:10px;">Deactivated</span>' : ''}</td>
+                <td><strong>${_esc(m.name)}</strong>${!isActive ? ' <span class="status-badge status-pending" style="font-size:10px;">Deactivated</span>' : ''}</td>
                 <td><span class="status-badge ${roleClass}">${m.role}</span></td>
                 <td>${m.type || 'N/A'}</td>
                 <td>${m.hiringDate || 'N/A'}</td>
@@ -1842,9 +1874,9 @@ const FinanceModule = {
     },
 
     _renderSummary(inPeriod) {
-        // Revenue: sum of paid tasks
-        const paidTasks = DataStore.query('tasks', t => t.paymentStatus === 'Paid' && t.paymentAmount);
-        const revenue = paidTasks.reduce((sum, t) => sum + parseFloat(t.paymentAmount || 0), 0);
+        // Revenue: sum of paid tasks within timeframe (use completedAt or customerPayment date)
+        const customerPayments = DataStore.getAll('customerPayments').filter(cp => cp.date && inPeriod(cp.date));
+        const revenue = customerPayments.reduce((sum, cp) => sum + parseFloat(cp.amount || 0), 0);
 
         // Payroll
         let payments = DataStore.getAll('workerPayments').filter(p => inPeriod(p.date));
@@ -1872,6 +1904,7 @@ const FinanceModule = {
         const taskId = parseInt(document.getElementById('customer-payment-task-id').value);
         const amount = parseFloat(document.getElementById('customer-payment-amount').value);
         const method = document.getElementById('customer-payment-method').value;
+        if (!taskId || isNaN(amount) || amount <= 0) { UI.toast('Please enter a valid positive amount.', 'error'); return; }
         DataStore.update('tasks', taskId, { paymentStatus:'Paid', paymentAmount:amount, paymentMethod:method });
         DataStore.create('customerPayments', { taskId, amount, method, date:new Date().toISOString().split('T')[0] });
         UI.closeModal('customer-payment');
@@ -1890,9 +1923,12 @@ const FinanceModule = {
 
     submitWorkerPayment(e) {
         e.preventDefault();
+        const workerId = parseInt(document.getElementById('wp-worker').value);
+        const amount = parseFloat(document.getElementById('wp-amount').value);
+        if (!workerId || isNaN(amount) || amount <= 0) { UI.toast('Please select a worker and enter a valid positive amount.', 'error'); return; }
         DataStore.create('workerPayments', {
-            workerId: parseInt(document.getElementById('wp-worker').value),
-            amount: parseFloat(document.getElementById('wp-amount').value),
+            workerId,
+            amount,
             method: document.getElementById('wp-method').value,
             date: document.getElementById('wp-date').value
         });
@@ -1913,6 +1949,8 @@ const FinanceModule = {
     submitExpense(e) {
         e.preventDefault();
         const workerId = parseInt(document.getElementById('exp-worker').value);
+        const expAmount = parseFloat(document.getElementById('exp-amount').value);
+        if (!workerId || isNaN(expAmount) || expAmount <= 0) { UI.toast('Please select a worker and enter a valid positive amount.', 'error'); return; }
         const member = DataStore.getById('members', workerId);
         const team = member ? DataStore.getById('teams', member.teamId) : null;
         DataStore.create('expenses', {
@@ -1986,9 +2024,9 @@ const SalesModule = {
             const stockClass = p.quantity === 0 ? 'out' : p.quantity <= p.minStock ? 'low' : 'ok';
             const stockLabel = p.quantity === 0 ? 'Out of Stock' : p.quantity <= p.minStock ? 'Low Stock' : 'In Stock';
             return `<tr>
-                <td><code>${p.barcode}</code></td>
-                <td><strong>${p.name}</strong>${p.description ? '<br><small style="color:var(--text-muted)">' + p.description + '</small>' : ''}</td>
-                <td>${p.category}</td>
+                <td><code>${_esc(p.barcode)}</code></td>
+                <td><strong>${_esc(p.name)}</strong>${p.description ? '<br><small style="color:var(--text-secondary)">' + _esc(p.description) + '</small>' : ''}</td>
+                <td>${_esc(p.category)}</td>
                 <td>${p.unitPrice.toLocaleString()} ${CONFIG.CURRENCY}</td>
                 <td>${p.quantity}</td>
                 <td><span class="stock-badge ${stockClass}">${stockLabel}</span></td>
@@ -2073,8 +2111,8 @@ const SalesModule = {
             tbody.innerHTML = `<tr><td colspan="6" class="pos-cart-empty">${I18n.t('sales.cartEmpty')}</td></tr>`;
         } else {
             tbody.innerHTML = this._cart.map((item, i) => `<tr>
-                <td>${item.name}</td>
-                <td><code>${item.barcode}</code></td>
+                <td>${_esc(item.name)}</td>
+                <td><code>${_esc(item.barcode)}</code></td>
                 <td><input type="number" value="${item.qty}" min="1" max="${item.maxQty}" style="width:60px;padding:4px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);" onchange="SalesModule.updateCartQty(${i}, parseInt(this.value))"></td>
                 <td>${item.unitPrice.toLocaleString()} ${CONFIG.CURRENCY}</td>
                 <td>${item.lineTotal.toLocaleString()} ${CONFIG.CURRENCY}</td>
@@ -2210,8 +2248,8 @@ const SalesModule = {
             return;
         }
         tbody.innerHTML = sales.map(s => `<tr>
-            <td><strong>${s.saleNumber}</strong></td>
-            <td>${s.date}</td>
+            <td><strong>${_esc(s.saleNumber)}</strong></td>
+            <td>${_esc(s.date)}</td>
             <td>${s.items.length} item${s.items.length > 1 ? 's' : ''}</td>
             <td>${s.totalAmount.toLocaleString()} ${CONFIG.CURRENCY}</td>
             <td>${s.paymentMethod}</td>
@@ -2225,16 +2263,16 @@ const SalesModule = {
         const content = document.getElementById('sale-detail-content');
         content.innerHTML = `
             <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
-                <div><strong>${sale.saleNumber}</strong></div>
-                <div>${sale.date}</div>
+                <div><strong>${_esc(sale.saleNumber)}</strong></div>
+                <div>${_esc(sale.date)}</div>
             </div>
-            <div style="margin-bottom:8px;color:var(--text-muted);">Payment: ${sale.paymentMethod}</div>
+            <div style="margin-bottom:8px;color:var(--text-secondary);">Payment: ${_esc(sale.paymentMethod)}</div>
             <table class="sale-detail-items">
                 <thead><tr><th>Product</th><th>Barcode</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
                 <tbody>
                     ${sale.items.map(item => `<tr>
-                        <td>${item.productName}</td>
-                        <td><code>${item.barcode}</code></td>
+                        <td>${_esc(item.productName)}</td>
+                        <td><code>${_esc(item.barcode)}</code></td>
                         <td>${item.qty}</td>
                         <td>${item.unitPrice.toLocaleString()} ${CONFIG.CURRENCY}</td>
                         <td>${item.lineTotal.toLocaleString()} ${CONFIG.CURRENCY}</td>
@@ -2260,8 +2298,8 @@ const SalesModule = {
             const stockClass = p.quantity === 0 ? 'out' : 'low';
             const stockLabel = p.quantity === 0 ? 'Out of Stock' : 'Low Stock';
             return `<tr>
-                <td><code>${p.barcode}</code></td>
-                <td>${p.name}</td>
+                <td><code>${_esc(p.barcode)}</code></td>
+                <td>${_esc(p.name)}</td>
                 <td>${p.quantity}</td>
                 <td>${p.minStock}</td>
                 <td><span class="stock-badge ${stockClass}">${stockLabel}</span></td>
@@ -2719,8 +2757,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             Quagga.start();
         });
+        Quagga.offDetected(); // Remove any previous listener to prevent stacking
         Quagga.onDetected((result) => {
             const code = result.codeResult.code;
+            Quagga.offDetected();
             Quagga.stop();
             preview.style.display = 'none';
             preview.innerHTML = '';
@@ -2750,9 +2790,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const results = UI.globalSearch(q);
         if (results.length === 0) { searchResults.classList.remove('active'); return; }
         searchResults.innerHTML = results.map(r =>
-            `<div class="search-result-item" data-tab="${r.tab}">
-                <span class="search-result-type">${r.type}</span>
-                <span>${r.name}</span>
+            `<div class="search-result-item" data-tab="${_esc(r.tab)}">
+                <span class="search-result-type">${_esc(r.type)}</span>
+                <span>${_esc(r.name)}</span>
             </div>`
         ).join('');
         searchResults.classList.add('active');

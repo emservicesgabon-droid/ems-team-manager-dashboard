@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EMS-Team Manager</title>
     <meta name="description" content="EMS-Team Manager Operations Dashboard">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#0a1628">
     <link rel="icon" type="image/png" href="logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -39,7 +41,7 @@
                     <label data-i18n="login.password">Password</label>
                     <input type="password" id="login-password" required placeholder="Enter your password">
                 </div>
-                <div id="login-error" class="form-error">Invalid credentials.</div>
+                <div id="login-error" class="form-error" role="alert" aria-live="assertive">Invalid credentials.</div>
                 <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;">
                     <i class="fa-solid fa-lock"></i> <span data-i18n="login.submit">Login Securely</span>
                 </button>
@@ -855,7 +857,7 @@
     <!-- ========== MODALS ========== -->
 
     <!-- Task Modal -->
-    <div class="modal" id="modal-task">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-task">
         <div class="modal-content" style="max-width:560px;">
             <div class="modal-header">
                 <h2 data-i18n="modal.createTask">Create New Task</h2>
@@ -931,7 +933,7 @@
     </div>
 
     <!-- Department Modal -->
-    <div class="modal" id="modal-department">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-department">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 data-i18n="modal.addDept">Add Department</h2>
@@ -951,7 +953,7 @@
     </div>
 
     <!-- Team Modal -->
-    <div class="modal" id="modal-team">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-team">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 data-i18n="modal.formTeam">Form Team</h2>
@@ -979,7 +981,7 @@
     </div>
 
     <!-- Customer Modal -->
-    <div class="modal" id="modal-customer">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-customer">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 data-i18n="modal.addCustomer">Add Customer</h2>
@@ -1003,7 +1005,7 @@
     </div>
 
     <!-- Equipment Modal -->
-    <div class="modal" id="modal-equipment">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-equipment">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 data-i18n="modal.addEquip">Add Equipment</h2>
@@ -1030,7 +1032,7 @@
     </div>
 
     <!-- Member Modal -->
-    <div class="modal" id="modal-member">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-member">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 data-i18n="modal.addMember">Add Team Member</h2>
@@ -1093,7 +1095,7 @@
     </div>
 
     <!-- Instruction Modal -->
-    <div class="modal" id="modal-instruction">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-instruction">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 data-i18n="modal.instructions">Task Instructions</h2>
@@ -1114,7 +1116,7 @@
     </div>
 
     <!-- Customer Payment Modal -->
-    <div class="modal" id="modal-customer-payment">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-customer-payment">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 data-i18n="modal.recordPayment">Record Customer Payment</h2>
@@ -1143,7 +1145,7 @@
     </div>
 
     <!-- Worker Payment Modal -->
-    <div class="modal" id="modal-worker-payment">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-worker-payment">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 data-i18n="modal.recordWorkerPay">Record Worker Payment</h2>
@@ -1179,7 +1181,7 @@
     </div>
 
     <!-- Expense Modal -->
-    <div class="modal" id="modal-expense">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-expense">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 data-i18n="modal.logExpense">Log Worker Expense</h2>
@@ -1221,7 +1223,7 @@
     </div>
 
     <!-- Change Password Modal -->
-    <div class="modal" id="modal-change-password">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-change-password">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 data-i18n="modal.changePassword">Change Password</h2>
@@ -1240,7 +1242,7 @@
                     <label data-i18n="form.confirmPw">Confirm New Password</label>
                     <input type="password" id="pw-confirm" required>
                 </div>
-                <div id="pw-error" class="form-error"></div>
+                <div id="pw-error" class="form-error" role="alert" aria-live="assertive"></div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-outline" data-close="change-password" data-i18n="btn.cancel">Cancel</button>
                     <button type="submit" class="btn btn-primary" data-i18n="btn.updatePassword">Update Password</button>
@@ -1250,7 +1252,7 @@
     </div>
 
     <!-- Reset Password Modal (Admin) -->
-    <div class="modal" id="modal-reset-password">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-reset-password">
         <div class="modal-content" style="max-width:440px;">
             <div class="modal-header">
                 <h2>Reset Password</h2>
@@ -1270,7 +1272,7 @@
                     <label>Confirm Password</label>
                     <input type="password" id="reset-pw-confirm" required placeholder="Re-enter password">
                 </div>
-                <div id="reset-pw-error" class="form-error" style="display:none;"></div>
+                <div id="reset-pw-error" class="form-error" role="alert" aria-live="assertive" style="display:none;"></div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-outline" data-close="reset-password">Cancel</button>
                     <button type="submit" class="btn btn-primary">Reset Password</button>
@@ -1280,7 +1282,7 @@
     </div>
 
     <!-- Confirm Dialog Modal -->
-    <div class="modal" id="modal-confirm">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-confirm">
         <div class="modal-content" style="max-width:400px;">
             <div class="modal-header">
                 <h2 data-i18n="modal.confirm">Confirm Action</h2>
@@ -1297,7 +1299,7 @@
     </div>
 
     <!-- Product Modal -->
-    <div class="modal" id="modal-product">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-product">
         <div class="modal-content" style="max-width:500px;">
             <div class="modal-header">
                 <h2 data-i18n="modal.addProduct">Add Product</h2>
@@ -1349,7 +1351,7 @@
     </div>
 
     <!-- Sale Detail Modal -->
-    <div class="modal" id="modal-sale-detail">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-sale-detail">
         <div class="modal-content" style="max-width:560px;">
             <div class="modal-header">
                 <h2 data-i18n="modal.saleDetail">Sale Details</h2>
@@ -1363,7 +1365,7 @@
     </div>
 
     <!-- Restock Modal -->
-    <div class="modal" id="modal-restock">
+    <div class="modal" role="dialog" aria-modal="true" id="modal-restock">
         <div class="modal-content" style="max-width:400px;">
             <div class="modal-header">
                 <h2 data-i18n="modal.restock">Restock Product</h2>
@@ -1400,9 +1402,9 @@
     <div class="copyright-footer">&copy; 2026 EMS-Gabon Powered by Eddymo 3.1</div>
 
     <!-- CDN Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" integrity="sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js" integrity="sha384-sl2LNalPRD3qrS3TKmINXWwRcQKf9cUlNZGd8pqjlpzwbzgMsFgE+133u4kM32IR" crossorigin="anonymous"></script>
     <script src="script.js"></script>
 </body>
 </html>
