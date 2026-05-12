@@ -553,7 +553,12 @@ const Auth = {
             DataStore.setSession(this.currentUser);
             return { success:true };
         }
-        const member = DataStore.query('members', m => m.name.toLowerCase() === username.toLowerCase() && m.password === password)[0];
+        // Match by name OR by numeric Member ID (e.g. "5" matches member with id 5)
+        const byId = parseInt(username);
+        const member = DataStore.query('members', m =>
+            (m.name.toLowerCase() === username.toLowerCase() || (!isNaN(byId) && m.id === byId))
+            && m.password === password
+        )[0];
         if (member) {
             if (member.accountStatus === 'Deactivated') {
                 return { success:false, error:I18n.t('msg.accountDeactivated') };
@@ -588,22 +593,30 @@ const Auth = {
         return false;
     },
 
-    isAdmin() { return this.currentUser && this.currentUser.role === 'Admin'; },
-    isLeader() { return this.currentUser && this.currentUser.role === 'Team Leader'; },
-    isWorker() { return this.currentUser && this.currentUser.role === 'Team Worker'; },
+    isAdmin()   { return this.currentUser && this.currentUser.role === 'Admin'; },
+    isManager() { return this.currentUser && this.currentUser.role === 'Manager'; },
+    isLeader()  { return this.currentUser && this.currentUser.role === 'Team Leader'; },
+    isWorker()  { return this.currentUser && this.currentUser.role === 'Team Worker'; },
+
+    // Convenience: Admin OR Manager
+    isSuperUser() { return this.isAdmin() || this.isManager(); },
 
     canAccess(tab) {
-        if (this.isAdmin()) return true;
+        if (this.isAdmin() || this.isManager()) return true;
         const adminOnly = ['departments','teams','customers','equipment','sales'];
         if (adminOnly.includes(tab)) return false;
         if (tab === 'members') return this.isLeader();
         return true;
     },
 
-    canCreateTask() { return this.isAdmin() || this.isLeader(); },
-    canDeleteTask() { return this.isAdmin(); },
+    canCreateTask() { return this.isAdmin() || this.isManager() || this.isLeader(); },
+    canEditTask()   { return this.isAdmin() || this.isManager(); },
+    canDeleteTask() { return this.isAdmin(); },          // Admin only — Managers cannot delete
+
+    canCreateEditRecord() { return this.isAdmin() || this.isManager(); }, // for depts/teams/customers/equip
+
     canToggleAvailability(memberId) {
-        if (this.isAdmin()) return true;
+        if (this.isAdmin() || this.isManager()) return true;
         if (this.isLeader()) {
             const m = DataStore.getById('members', memberId);
             return m && m.teamId === this.currentUser.teamId;
@@ -708,35 +721,36 @@ const UI = {
 
     applyPermissions() {
         const role = Auth.currentUser.role;
-        // Nav items
+        const isSuperUser = Auth.isSuperUser();  // Admin or Manager
+        // Nav items — Manager can access every tab just like Admin
         ['departments','teams','customers','equipment','sales'].forEach(tab => {
             const el = document.querySelector(`[data-tab="${tab}"]`);
-            if (el) el.style.display = role === 'Admin' ? 'flex' : 'none';
+            if (el) el.style.display = isSuperUser ? 'flex' : 'none';
         });
         const membersNav = document.querySelector('[data-tab="members"]');
-        if (membersNav) membersNav.style.display = (role === 'Admin' || role === 'Team Leader') ? 'flex' : 'none';
+        if (membersNav) membersNav.style.display = (isSuperUser || role === 'Team Leader') ? 'flex' : 'none';
         // Quick actions
         const qa = document.getElementById('quick-actions-card');
         if (qa) qa.style.display = role === 'Team Worker' ? 'none' : '';
         ['qa-department','qa-team'].forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.style.display = role === 'Admin' ? 'flex' : 'none';
+            if (el) el.style.display = isSuperUser ? 'flex' : 'none';
         });
-        // New task buttons
+        // New task / CRUD buttons
         const btnNewTask = document.getElementById('btn-new-task');
         if (btnNewTask) btnNewTask.style.display = Auth.canCreateTask() ? 'inline-flex' : 'none';
-        // Finance buttons
+        // Finance action buttons
         ['btn-pay-worker','btn-log-expense'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = role === 'Team Worker' ? 'none' : 'inline-flex';
         });
-        // Add member button
+        // Add member button — Admin and Manager can add members
         const btnAddMember = document.getElementById('btn-add-member');
-        if (btnAddMember) btnAddMember.style.display = role === 'Admin' ? 'inline-flex' : 'none';
-        // Availability toggle in header
+        if (btnAddMember) btnAddMember.style.display = isSuperUser ? 'inline-flex' : 'none';
+        // Availability toggle in header — everyone except the hardcoded Admin
         const availToggle = document.getElementById('avail-toggle-header');
         if (availToggle) {
-            if (role === 'Team Leader' || role === 'Team Worker') {
+            if (Auth.currentUser.id) {   // has a member record (not the hardcoded admin)
                 availToggle.style.display = 'flex';
                 this.updateHeaderAvailability();
             } else {
@@ -824,7 +838,7 @@ const DashboardModule = {
         // Recent tasks
         const tbody = document.getElementById('dashboard-tasks-table');
         const filteredTasks = tasks.filter(t => {
-            if (Auth.isAdmin()) return true;
+            if (Auth.isSuperUser()) return true;
             if (Auth.isLeader()) return t.teamId === Auth.currentUser.teamId;
             return t.assigneeIds && t.assigneeIds.includes(Auth.currentUser.id);
         });
@@ -851,7 +865,7 @@ const DashboardModule = {
                     <button class="btn btn-outline btn-sm" onclick="TasksModule.openInstructions(${task.id})" title="Instructions">
                         <i class="fa-solid fa-file-lines"></i>
                     </button>
-                    ${Auth.isAdmin() ? `<button class="btn btn-outline btn-sm" onclick="TasksModule.openEditModal(${task.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
+                    ${Auth.canEditTask() ? `<button class="btn btn-outline btn-sm" onclick="TasksModule.openEditModal(${task.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
                     ${Auth.canDeleteTask() ? `<button class="btn btn-outline btn-sm" onclick="TasksModule.deleteTask(${task.id})"><i class="fa-solid fa-trash text-danger"></i></button>` : ''}
                 </td>
             </tr>`;
@@ -886,7 +900,7 @@ const DashboardModule = {
     },
     _getStatusBadge(status, taskId) {
         const cls = { 'Active':'status-active', 'Pending':'status-pending', 'Completed':'status-completed' };
-        const canCycle = Auth.isAdmin() || Auth.isLeader() || (Auth.isWorker() && taskId);
+        const canCycle = Auth.isSuperUser() || Auth.isLeader() || (Auth.isWorker() && taskId);
         const click = canCycle ? ` onclick="TasksModule.cycleStatus(${taskId})"` : '';
         const clickClass = canCycle ? ' clickable' : '';
         return `<span class="status-badge ${cls[status] || ''}${clickClass}" title="Click to change status"${click}>${status}</span>`;
@@ -903,7 +917,7 @@ const TasksModule = {
         if (!tbody) return;
         const tasks = DataStore.getAll('tasks');
         let filtered = tasks.filter(t => {
-            if (Auth.isAdmin()) return true;
+            if (Auth.isSuperUser()) return true;
             if (Auth.isLeader()) return t.teamId === Auth.currentUser.teamId;
             return t.assigneeIds && t.assigneeIds.includes(Auth.currentUser.id);
         });
@@ -935,7 +949,7 @@ const TasksModule = {
                 <td>${DashboardModule._getStatusBadge(task.status, task.id)}</td>
                 <td>
                     <button class="btn btn-outline btn-sm" onclick="TasksModule.openInstructions(${task.id})" title="Instructions"><i class="fa-solid fa-file-lines"></i></button>
-                    ${Auth.isAdmin() ? `<button class="btn btn-outline btn-sm" onclick="TasksModule.openEditModal(${task.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
+                    ${Auth.canEditTask() ? `<button class="btn btn-outline btn-sm" onclick="TasksModule.openEditModal(${task.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
                     ${Auth.canDeleteTask() ? `<button class="btn btn-outline btn-sm" onclick="TasksModule.deleteTask(${task.id})"><i class="fa-solid fa-trash text-danger"></i></button>` : ''}
                 </td>
             </tr>`;
@@ -943,7 +957,7 @@ const TasksModule = {
     },
 
     openEditModal(id) {
-        if (!Auth.isAdmin()) return;
+        if (!Auth.canEditTask()) return;
         const task = DataStore.getById('tasks', id);
         if (!task) return;
         this._editId = id;
@@ -1240,7 +1254,7 @@ const DepartmentsModule = {
     },
 
     openEditModal(id) {
-        if (!Auth.isAdmin()) return;
+        if (!Auth.canCreateEditRecord()) return;
         const dept = DataStore.getById('departments', id);
         if (!dept) return;
         this._editId = id;
@@ -1260,7 +1274,8 @@ const DepartmentsModule = {
         tbody.innerHTML = depts.map(d => `<tr>
             <td>DEP-${String(d.id).padStart(3,'0')}</td>
             <td><strong>${_esc(d.name)}</strong></td>
-            <td>${Auth.isAdmin() ? `<button class="btn btn-outline btn-sm" onclick="DepartmentsModule.openEditModal(${d.id})" title="Edit"><i class="fa-solid fa-pen"></i></button> <button class="btn btn-outline btn-sm text-danger" onclick="DepartmentsModule.delete(${d.id})"><i class="fa-solid fa-trash"></i></button>` : ''}</td>
+            <td>${Auth.canCreateEditRecord() ? `<button class="btn btn-outline btn-sm" onclick="DepartmentsModule.openEditModal(${d.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
+                ${Auth.isAdmin() ? ` <button class="btn btn-outline btn-sm text-danger" onclick="DepartmentsModule.delete(${d.id})"><i class="fa-solid fa-trash"></i></button>` : ''}</td>
         </tr>`).join('');
     },
     submit(e) {
@@ -1302,7 +1317,7 @@ const TeamsModule = {
     _editId: null,
 
     openEditModal(id) {
-        if (!Auth.isAdmin()) return;
+        if (!Auth.canCreateEditRecord()) return;
         const team = DataStore.getById('teams', id);
         if (!team) return;
         this._editId = id;
@@ -1328,7 +1343,8 @@ const TeamsModule = {
             <td><strong>${_esc(t.name)}</strong></td>
             <td>${DashboardModule._getDeptName(t.departmentId)}</td>
             <td>${t.fields || 'N/A'}</td>
-            <td>${Auth.isAdmin() ? `<button class="btn btn-outline btn-sm" onclick="TeamsModule.openEditModal(${t.id})" title="Edit"><i class="fa-solid fa-pen"></i></button> <button class="btn btn-outline btn-sm text-danger" onclick="TeamsModule.delete(${t.id})"><i class="fa-solid fa-trash"></i></button>` : ''}</td>
+            <td>${Auth.canCreateEditRecord() ? `<button class="btn btn-outline btn-sm" onclick="TeamsModule.openEditModal(${t.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
+                ${Auth.isAdmin() ? ` <button class="btn btn-outline btn-sm text-danger" onclick="TeamsModule.delete(${t.id})"><i class="fa-solid fa-trash"></i></button>` : ''}</td>
         </tr>`).join('');
     },
     openModal() {
@@ -1388,7 +1404,7 @@ const CustomersModule = {
     },
 
     openEditModal(id) {
-        if (!Auth.isAdmin()) return;
+        if (!Auth.canCreateEditRecord()) return;
         const c = DataStore.getById('customers', id);
         if (!c) return;
         this._editId = id;
@@ -1409,7 +1425,8 @@ const CustomersModule = {
         tbody.innerHTML = custs.map(c => `<tr>
             <td><strong>${_esc(c.name)}</strong></td>
             <td>${_esc(c.location)}</td>
-            <td>${Auth.isAdmin() ? `<button class="btn btn-outline btn-sm" onclick="CustomersModule.openEditModal(${c.id})" title="Edit"><i class="fa-solid fa-pen"></i></button> <button class="btn btn-outline btn-sm text-danger" onclick="CustomersModule.delete(${c.id})"><i class="fa-solid fa-trash"></i></button>` : ''}</td>
+            <td>${Auth.canCreateEditRecord() ? `<button class="btn btn-outline btn-sm" onclick="CustomersModule.openEditModal(${c.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
+                ${Auth.isAdmin() ? ` <button class="btn btn-outline btn-sm text-danger" onclick="CustomersModule.delete(${c.id})"><i class="fa-solid fa-trash"></i></button>` : ''}</td>
         </tr>`).join('');
     },
     submit(e) {
@@ -1454,7 +1471,7 @@ const EquipmentModule = {
     },
 
     openEditModal(id) {
-        if (!Auth.isAdmin()) return;
+        if (!Auth.canCreateEditRecord()) return;
         const eq = DataStore.getById('equipment', id);
         if (!eq) return;
         this._editId = id;
@@ -1480,7 +1497,8 @@ const EquipmentModule = {
                 <td><strong>${_esc(eq.name)}</strong></td>
                 <td>${icon}</td>
                 <td><span class="status-badge ${statusClass}">${eq.status}</span></td>
-                <td>${Auth.isAdmin() ? `<button class="btn btn-outline btn-sm" onclick="EquipmentModule.openEditModal(${eq.id})" title="Edit"><i class="fa-solid fa-pen"></i></button> <button class="btn btn-outline btn-sm text-danger" onclick="EquipmentModule.delete(${eq.id})" ${inUse ? 'disabled title="'+I18n.t('msg.cannotDeleteEquip')+'"' : ''}><i class="fa-solid fa-trash"></i></button>` : ''}</td>
+                <td>${Auth.canCreateEditRecord() ? `<button class="btn btn-outline btn-sm" onclick="EquipmentModule.openEditModal(${eq.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
+                    ${Auth.isAdmin() ? ` <button class="btn btn-outline btn-sm text-danger" onclick="EquipmentModule.delete(${eq.id})" ${inUse ? 'disabled title="'+I18n.t('msg.cannotDeleteEquip')+'"' : ''}><i class="fa-solid fa-trash"></i></button>` : ''}</td>
             </tr>`;
         }).join('');
     },
@@ -1521,7 +1539,7 @@ const MembersModule = {
     _editId: null,
 
     openEditModal(id) {
-        if (!Auth.isAdmin()) return;
+        if (!Auth.isSuperUser()) return;
         const m = DataStore.getById('members', id);
         if (!m) return;
         this._editId = id;
@@ -1533,9 +1551,17 @@ const MembersModule = {
         document.getElementById('member-password-section').style.display = 'none';
         document.getElementById('member-password').removeAttribute('required');
         document.getElementById('member-password-confirm').removeAttribute('required');
+        // Populate role dropdown (Manager can't promote to Manager/Admin)
+        const roleSel = document.getElementById('member-role');
+        if (Auth.isManager()) {
+            roleSel.innerHTML = '<option value="Team Leader">Team Leader</option><option value="Team Worker">Team Worker</option>';
+        } else {
+            roleSel.innerHTML = '<option value="Team Leader">Team Leader</option><option value="Team Worker">Team Worker</option><option value="Manager">Manager</option><option value="Admin">Administrator</option>';
+        }
+        roleSel.value = m.role;
         // Handle team fields
         const teamFields = document.getElementById('member-team-fields');
-        if (m.role === 'Admin') {
+        if (m.role === 'Admin' || m.role === 'Manager') {
             teamFields.style.display = 'none';
         } else {
             teamFields.style.display = 'block';
@@ -1571,6 +1597,7 @@ const MembersModule = {
         // Role-based filtering
         if (Auth.isLeader()) members = members.filter(m => m.teamId === Auth.currentUser.teamId);
         else if (Auth.isWorker()) { tbody.innerHTML = ''; return; }
+        // Manager and Admin see everyone
 
         // Apply UI filters
         const teamF = document.getElementById('filter-member-team')?.value;
@@ -1581,15 +1608,15 @@ const MembersModule = {
         if (availF) members = members.filter(m => m.availability === availF);
 
         if (members.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:30px;">${I18n.t('msg.noMembers')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-secondary);padding:30px;">${I18n.t('msg.noMembers')}</td></tr>`;
             return;
         }
 
         tbody.innerHTML = members.map(m => {
             const team = DataStore.getById('teams', m.teamId);
-            const teamName = team ? team.name : 'Unknown';
-            const deptName = team ? DashboardModule._getDeptName(team.departmentId) : 'Unknown';
-            const roleClass = m.role === 'Team Leader' ? 'role-leader' : 'role-worker';
+            const teamName = team ? team.name : (m.role === 'Manager' || m.role === 'Admin' ? '— (All)' : 'Unknown');
+            const deptName = team ? DashboardModule._getDeptName(team.departmentId) : (m.role === 'Manager' || m.role === 'Admin' ? '— (All)' : 'Unknown');
+            const roleClass = m.role === 'Team Leader' ? 'role-leader' : m.role === 'Manager' ? 'role-manager' : m.role === 'Admin' ? 'role-admin' : 'role-worker';
             const isAvail = m.availability === 'Available';
             const canToggle = Auth.canToggleAvailability(m.id);
             const toggleBtn = canToggle ?
@@ -1600,9 +1627,17 @@ const MembersModule = {
                 `<span class="avail-badge"><span class="avail-dot ${isAvail ? 'available' : 'unavailable'}"></span>${isAvail ? I18n.t('avail.available') : I18n.t('avail.notAvailable')}</span>`;
 
             const isActive = m.accountStatus !== 'Deactivated';
+            // Deactivate / activate — Admin only
             const acctBtn = Auth.isAdmin() ? `<button class="btn btn-outline btn-sm ${isActive ? '' : 'text-danger'}" onclick="MembersModule.toggleAccountStatus(${m.id})" title="${isActive ? 'Deactivate' : 'Activate'}"><i class="fa-solid ${isActive ? 'fa-user-check' : 'fa-user-slash'}"></i></button>` : '';
+            // Reset password — Admin only
+            const resetBtn = Auth.isAdmin() ? `<button class="btn btn-outline btn-sm" onclick="MembersModule.resetPassword(${m.id})" title="Reset Password"><i class="fa-solid fa-key"></i></button>` : '';
+            // Edit — Admin and Manager
+            const editBtn = Auth.isSuperUser() ? `<button class="btn btn-outline btn-sm" onclick="MembersModule.openEditModal(${m.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>` : '';
+            // Delete — Admin only
+            const delBtn = Auth.isAdmin() ? `<button class="btn btn-outline btn-sm text-danger" onclick="MembersModule.delete(${m.id})"><i class="fa-solid fa-trash"></i></button>` : '';
 
             return `<tr${!isActive ? ' style="opacity:0.5"' : ''}>
+                <td><span class="member-id-badge">#${m.id}</span></td>
                 <td><strong>${_esc(m.name)}</strong>${!isActive ? ' <span class="status-badge status-pending" style="font-size:10px;">Deactivated</span>' : ''}</td>
                 <td><span class="status-badge ${roleClass}">${m.role}</span></td>
                 <td>${m.type || 'N/A'}</td>
@@ -1610,7 +1645,7 @@ const MembersModule = {
                 <td>${teamName}</td>
                 <td>${deptName}</td>
                 <td>${toggleBtn}</td>
-                <td>${Auth.isAdmin() ? `${acctBtn} <button class="btn btn-outline btn-sm" onclick="MembersModule.resetPassword(${m.id})" title="Reset Password"><i class="fa-solid fa-key"></i></button> <button class="btn btn-outline btn-sm" onclick="MembersModule.openEditModal(${m.id})" title="Edit"><i class="fa-solid fa-pen"></i></button> <button class="btn btn-outline btn-sm text-danger" onclick="MembersModule.delete(${m.id})"><i class="fa-solid fa-trash"></i></button>` : ''}</td>
+                <td>${acctBtn}${resetBtn}${editBtn}${delBtn}</td>
             </tr>`;
         }).join('');
     },
@@ -1639,7 +1674,14 @@ const MembersModule = {
         document.getElementById('member-password-confirm').setAttribute('required', '');
         const strengthEl = document.getElementById('member-pw-strength');
         if (strengthEl) strengthEl.textContent = '';
-        document.getElementById('member-role').value = 'Team Leader';
+        // Manager can only create Team Leader / Team Worker (not Manager / Admin)
+        const roleSel = document.getElementById('member-role');
+        if (Auth.isManager()) {
+            roleSel.innerHTML = '<option value="Team Leader">Team Leader</option><option value="Team Worker">Team Worker</option>';
+        } else {
+            roleSel.innerHTML = '<option value="Team Leader">Team Leader</option><option value="Team Worker">Team Worker</option><option value="Manager">Manager</option><option value="Admin">Administrator</option>';
+        }
+        roleSel.value = 'Team Leader';
         document.querySelector('#modal-member .modal-header h2').textContent = I18n.t('modal.addMember');
         UI.openModal('member');
     },
@@ -1657,8 +1699,9 @@ const MembersModule = {
     submit(e) {
         e.preventDefault();
         const role = document.getElementById('member-role').value;
-        const teamId = role === 'Admin' ? null : parseInt(document.getElementById('member-team').value);
-        if (role !== 'Admin' && !teamId) {
+        const noTeamRequired = role === 'Admin' || role === 'Manager';
+        const teamId = noTeamRequired ? null : parseInt(document.getElementById('member-team').value);
+        if (!noTeamRequired && !teamId) {
             UI.toast('Please select a team.', 'warning');
             return;
         }
@@ -1844,7 +1887,7 @@ const FinanceModule = {
     _renderBilling() {
         const tbody = document.getElementById('finance-billing-table');
         if (!tbody) return;
-        if (!Auth.isAdmin()) {
+        if (!Auth.isSuperUser()) {
             tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:20px;">${I18n.t('msg.restricted')}</td></tr>`;
             return;
         }
@@ -1879,10 +1922,11 @@ const FinanceModule = {
         let payments = DataStore.getAll('workerPayments').filter(p => inPeriod(p.date));
         // Role filter
         if (Auth.isWorker()) payments = payments.filter(p => p.workerId === Auth.currentUser.id);
-        if (Auth.isLeader()) payments = payments.filter(p => {
+        else if (Auth.isLeader()) payments = payments.filter(p => {
             const w = DataStore.getById('members', p.workerId);
             return w && w.teamId === Auth.currentUser.teamId;
         });
+        // Admin and Manager see all payments
 
         // Aggregate
         const members = DataStore.getAll('members');
@@ -1918,10 +1962,11 @@ const FinanceModule = {
 
         let expenses = DataStore.getAll('expenses').filter(e => inPeriod(e.date));
         if (Auth.isWorker()) expenses = expenses.filter(e => e.workerId === Auth.currentUser.id);
-        if (Auth.isLeader()) expenses = expenses.filter(e => {
+        else if (Auth.isLeader()) expenses = expenses.filter(e => {
             const w = DataStore.getById('members', e.workerId);
             return w && w.teamId === Auth.currentUser.teamId;
         });
+        // Admin and Manager see all expenses
 
         // Aggregate by dept
         const depts = DataStore.getAll('departments');
@@ -2108,8 +2153,8 @@ const SalesModule = {
                 <td>${p.quantity}</td>
                 <td><span class="stock-badge ${stockClass}">${stockLabel}</span></td>
                 <td>
-                    ${Auth.isAdmin() ? `<button class="btn btn-outline btn-sm" onclick="SalesModule.openEditProduct(${p.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn btn-outline btn-sm text-danger" onclick="SalesModule.deleteProduct(${p.id})" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
+                    ${Auth.canCreateEditRecord() ? `<button class="btn btn-outline btn-sm" onclick="SalesModule.openEditProduct(${p.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
+                    ${Auth.isAdmin() ? `<button class="btn btn-outline btn-sm text-danger" onclick="SalesModule.deleteProduct(${p.id})" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
                 </td>
             </tr>`;
         }).join('');
@@ -2124,7 +2169,7 @@ const SalesModule = {
     },
 
     openEditProduct(id) {
-        if (!Auth.isAdmin()) return;
+        if (!Auth.canCreateEditRecord()) return;
         const p = DataStore.getById('products', id);
         if (!p) return;
         this._editProductId = id;
@@ -2757,7 +2802,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Member role change: hide/show team fields for Admin
     document.getElementById('member-role').addEventListener('change', (e) => {
         const teamFields = document.getElementById('member-team-fields');
-        if (teamFields) teamFields.style.display = e.target.value === 'Admin' ? 'none' : 'block';
+        const noTeam = e.target.value === 'Admin' || e.target.value === 'Manager';
+        if (teamFields) teamFields.style.display = noTeam ? 'none' : 'block';
     });
 
     // Password strength indicator

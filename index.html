@@ -43,7 +43,7 @@
             <form id="form-login">
                 <div class="form-group">
                     <label data-i18n="login.username">Username (or Member Name)</label>
-                    <input type="text" id="login-username" required placeholder="e.g. admin or Jean Moussavou">
+                    <input type="text" id="login-username" required placeholder="e.g. admin, Jean Moussavou, or Member ID #5">
                 </div>
                 <div class="form-group">
                     <label data-i18n="login.password">Password</label>
@@ -466,6 +466,7 @@
                             <label data-i18n="filter.role">Role</label>
                             <select id="filter-member-role">
                                 <option value="">All Roles</option>
+                                <option value="Manager">Manager</option>
                                 <option value="Team Leader">Team Leader</option>
                                 <option value="Team Worker">Team Worker</option>
                             </select>
@@ -483,6 +484,7 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
+                                    <th>ID</th>
                                     <th data-i18n="col.name">NAME</th>
                                     <th data-i18n="col.role">ROLE</th>
                                     <th data-i18n="col.contractType">CONTRACT</th>
@@ -1057,6 +1059,7 @@
                         <select id="member-role" required>
                             <option value="Team Leader">Team Leader</option>
                             <option value="Team Worker">Team Worker</option>
+                            <option value="Manager">Manager</option>
                             <option value="Admin">Administrator</option>
                         </select>
                     </div>
