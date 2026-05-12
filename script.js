@@ -637,6 +637,28 @@ const Auth = {
 };
 
 // ============================================================
+// SECTION 3b: FORCED PASSWORD CHANGE HELPER
+// ============================================================
+// Returns true and opens the non-dismissable modal if the current
+// member has mustChangePassword === true. Returns false otherwise.
+function _checkForcedPasswordChange() {
+    if (!Auth.currentUser || Auth.currentUser.id === null) return false;
+    const member = DataStore.getById('members', Auth.currentUser.id);
+    if (!member || !member.mustChangePassword) return false;
+    // Reset the form before opening
+    const newEl  = document.getElementById('force-pw-new');
+    const confEl = document.getElementById('force-pw-confirm');
+    const strEl  = document.getElementById('force-pw-strength');
+    const errEl  = document.getElementById('force-pw-error');
+    if (newEl)  newEl.value  = '';
+    if (confEl) confEl.value = '';
+    if (strEl)  strEl.textContent = '';
+    if (errEl)  errEl.style.display = 'none';
+    UI.openModal('force-pw-change');
+    return true;
+}
+
+// ============================================================
 // SECTION 4: UI CORE
 // ============================================================
 const UI = {
@@ -1758,7 +1780,8 @@ const MembersModule = {
             teamId,
             password: pw,
             availability: 'Available',
-            accountStatus: 'Active'
+            accountStatus: 'Active',
+            mustChangePassword: true   // member must set their own password on first login
         });
         UI.closeModal('member');
         UI.toast(I18n.t('msg.created'), 'success');
@@ -1801,9 +1824,9 @@ const MembersModule = {
         if (newPw !== conf) { errEl.textContent = I18n.t('msg.pwMismatch'); errEl.style.display = 'block'; return; }
         const result = PasswordUtil.validate(newPw);
         if (!result.valid) { errEl.textContent = I18n.t('msg.pwWeak'); errEl.style.display = 'block'; return; }
-        DataStore.update('members', id, { password: newPw });
+        DataStore.update('members', id, { password: newPw, mustChangePassword: true });
         UI.closeModal('reset-password');
-        UI.toast('Password reset successfully', 'success');
+        UI.toast('Password reset. Member must set a new password on next login.', 'success');
     },
 
     async delete(id) {
@@ -2641,6 +2664,37 @@ const PasswordModule = {
         DataStore.update('members', Auth.currentUser.id, { password: newPw });
         UI.closeModal('change-password');
         UI.toast(I18n.t('msg.pwUpdated'), 'success');
+    },
+
+    // Called when app detects mustChangePassword === true after login
+    submitForcedChange(e) {
+        e.preventDefault();
+        const newPw = document.getElementById('force-pw-new').value;
+        const conf  = document.getElementById('force-pw-confirm').value;
+        const errEl = document.getElementById('force-pw-error');
+        errEl.style.display = 'none';
+
+        if (newPw !== conf) {
+            errEl.textContent = I18n.t('msg.pwMismatch');
+            errEl.style.display = 'block';
+            return;
+        }
+        const result = PasswordUtil.validate(newPw);
+        if (!result.valid) {
+            errEl.textContent = I18n.t('msg.pwWeak');
+            errEl.style.display = 'block';
+            return;
+        }
+
+        DataStore.update('members', Auth.currentUser.id, {
+            password: newPw,
+            mustChangePassword: false
+        });
+
+        UI.closeModal('force-pw-change');
+        UI.toast('Password set. Welcome to EMS-Team Manager!', 'success');
+        UI.switchTab('dashboard');
+        UI.renderAll();
     }
 };
 
@@ -2700,7 +2754,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('login-screen').style.display = 'none';
         document.querySelector('.app-container').style.display = 'flex';
         UI.applyPermissions();
-        UI.renderAll();
+        if (!_checkForcedPasswordChange()) {
+            UI.renderAll();
+        }
     } else {
         document.getElementById('login-screen').style.display = 'flex';
         document.querySelector('.app-container').style.display = 'none';
@@ -2730,7 +2786,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('login-screen').style.display = 'none';
             document.querySelector('.app-container').style.display = 'flex';
             UI.applyPermissions();
-            UI.switchTab('dashboard');
+            // Check if this member must change their password before accessing the app
+            if (!_checkForcedPasswordChange()) {
+                UI.switchTab('dashboard');
+            }
         } else {
             errEl.textContent = result.error;
             errEl.style.display = 'block';
@@ -2803,6 +2862,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('form-reset-password').addEventListener('submit', (e) => MembersModule.submitResetPassword(e));
     document.getElementById('reset-pw-new').addEventListener('input', (e) => {
         const el = document.getElementById('reset-pw-strength');
+        if (!e.target.value) { el.textContent = ''; return; }
+        const result = PasswordUtil.validate(e.target.value);
+        const label = PasswordUtil.strengthLabel(result.passed);
+        el.textContent = label.text;
+        el.style.color = label.color;
+    });
+
+    // Force password change (first login / after admin reset)
+    document.getElementById('form-force-pw-change').addEventListener('submit', (e) => PasswordModule.submitForcedChange(e));
+    document.getElementById('force-pw-new').addEventListener('input', (e) => {
+        const el = document.getElementById('force-pw-strength');
         if (!e.target.value) { el.textContent = ''; return; }
         const result = PasswordUtil.validate(e.target.value);
         const label = PasswordUtil.strengthLabel(result.passed);
