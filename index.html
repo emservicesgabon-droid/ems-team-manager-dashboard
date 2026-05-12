@@ -14,6 +14,14 @@
 </head>
 <body>
 
+    <!-- ========== FIRESTORE LOADING OVERLAY ========== -->
+    <div id="firestore-loading" style="position:fixed;inset:0;background:var(--bg-app,#0a1628);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px;">
+        <img src="logo.png" alt="EMS Logo" style="width:64px;height:64px;border-radius:12px;">
+        <div style="width:48px;height:48px;border:3px solid rgba(0,212,255,0.2);border-top-color:#00d4ff;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+        <p style="color:#00d4ff;font-family:Inter,sans-serif;font-size:14px;letter-spacing:1px;">Connecting to database…</p>
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
     <!-- ========== SPLASH SCREEN ========== -->
     <div id="splash-screen" class="splash-screen">
         <div class="splash-logo-container">
@@ -1405,6 +1413,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" integrity="sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js" integrity="sha384-sl2LNalPRD3qrS3TKmINXWwRcQKf9cUlNZGd8pqjlpzwbzgMsFgE+133u4kM32IR" crossorigin="anonymous"></script>
-    <script src="script.js"></script>
+    <!-- Firebase SDK -->
+    <script type="module" src="script.js"></script>
 </body>
 </html>

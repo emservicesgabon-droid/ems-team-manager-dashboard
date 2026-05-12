@@ -1,8 +1,24 @@
 /**
  * EMS-Team Manager Dashboard v2.0
  * Complete Frontend Application
- * All data persisted in localStorage
+ * Data persisted in Firebase Firestore (shared real-time database)
  */
+
+// Firebase SDK (ESM imports - script.js loaded as type="module")
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, writeBatch, query as fsQuery, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const firebaseConfig = {
+    apiKey: "AIzaSyC1Q5pyr3aMZ2YVuh5tqrvKmOBkzFhs0eo",
+    authDomain: "ems-team-manager-dash.firebaseapp.com",
+    projectId: "ems-team-manager-dash",
+    storageBucket: "ems-team-manager-dash.firebasestorage.app",
+    messagingSenderId: "214973751281",
+    appId: "1:214973751281:web:c9f5847d960da68acdee50"
+};
+
+const _fbApp = initializeApp(firebaseConfig);
+const _db = getFirestore(_fbApp);
 
 // ============================================================
 // SECTION 0: CONSTANTS & CONFIG
@@ -293,50 +309,85 @@ const I18n = {
 };
 
 // ============================================================
-// SECTION 2: DATA STORE
+// SECTION 2: DATA STORE (Firebase Firestore backend)
 // ============================================================
 const DataStore = {
+    // In-memory cache — loaded once from Firestore on startup, kept in sync via listeners
     _data: null,
+    _listeners: [], // Firestore onSnapshot unsubscribe functions
 
-    load() {
-        try {
-            const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
-            if (raw) {
-                this._data = JSON.parse(raw);
-                // Ensure all tables exist
-                CONFIG.TABLES.forEach(t => { if (!this._data[t]) this._data[t] = []; });
-                if (!this._data._nextIds) this._data._nextIds = {};
-                // Migration: ensure all members have accountStatus
-                (this._data.members || []).forEach(m => { if (!m.accountStatus) m.accountStatus = 'Active'; });
-            } else {
-                this.seedDemo();
+    // ---- INIT: load all collections from Firestore into memory ----
+    async load() {
+        this._data = { _nextIds: {} };
+        CONFIG.TABLES.forEach(t => { this._data[t] = []; });
+
+        // Check if Firestore is empty (first run) → seed demo data
+        const deptSnap = await getDocs(collection(_db, 'departments'));
+        if (deptSnap.empty) {
+            await this.seedDemo();
+        } else {
+            // Load all tables in parallel
+            await Promise.all(CONFIG.TABLES.map(async (table) => {
+                const snap = await getDocs(collection(_db, table));
+                this._data[table] = snap.docs.map(d => d.data());
+            }));
+            // Load _meta (nextIds)
+            const metaDoc = await getDoc(doc(_db, '_meta', 'nextIds'));
+            if (metaDoc.exists()) {
+                this._data._nextIds = metaDoc.data();
             }
-        } catch(e) {
-            console.error('DataStore load error:', e);
-            this.seedDemo();
+            // Migration: ensure accountStatus on members
+            (this._data.members || []).forEach(m => { if (!m.accountStatus) m.accountStatus = 'Active'; });
         }
+
+        // Set up real-time listeners for live sync between users
+        this._setupListeners();
     },
 
-    save() {
-        try {
-            localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(this._data));
-        } catch(e) { console.error('DataStore save error:', e); }
+    _setupListeners() {
+        // Unsubscribe previous listeners
+        this._listeners.forEach(unsub => unsub());
+        this._listeners = [];
+
+        CONFIG.TABLES.forEach(table => {
+            const unsub = onSnapshot(collection(_db, table), (snap) => {
+                this._data[table] = snap.docs.map(d => d.data());
+                // Re-render only the currently visible tab
+                if (Auth.currentUser && UI.currentTab) {
+                    UI.renderAll();
+                }
+            });
+            this._listeners.push(unsub);
+        });
     },
 
-    getAll(table) { return this._data[table] || []; },
-    getById(table, id) { return (this._data[table] || []).find(r => r.id === id); },
-    query(table, fn) { return (this._data[table] || []).filter(fn); },
+    // ---- WRITE HELPERS ----
+    async _saveNextIds() {
+        await setDoc(doc(_db, '_meta', 'nextIds'), this._data._nextIds);
+    },
 
-    create(table, record) {
+    _getNextId(table) {
         if (!this._data._nextIds[table]) {
             const existing = this._data[table] || [];
             this._data._nextIds[table] = existing.length > 0 ? Math.max(...existing.map(r => r.id)) + 1 : 1;
         }
-        record.id = this._data._nextIds[table]++;
+        return this._data._nextIds[table]++;
+    },
+
+    // ---- PUBLIC API (synchronous reads from in-memory cache) ----
+    getAll(table) { return this._data[table] || []; },
+    getById(table, id) { return (this._data[table] || []).find(r => r.id === id) || null; },
+    query(table, fn) { return (this._data[table] || []).filter(fn); },
+
+    create(table, record) {
+        record.id = this._getNextId(table);
         record.createdAt = new Date().toISOString();
         record.updatedAt = record.createdAt;
+        // Update local cache immediately (optimistic)
         this._data[table].push(record);
-        this.save();
+        // Persist to Firestore asynchronously
+        setDoc(doc(_db, table, String(record.id)), record);
+        this._saveNextIds();
         return record;
     },
 
@@ -345,7 +396,8 @@ const DataStore = {
         const idx = arr.findIndex(r => r.id === id);
         if (idx === -1) return null;
         Object.assign(arr[idx], partial, { updatedAt: new Date().toISOString() });
-        this.save();
+        // Persist to Firestore asynchronously
+        setDoc(doc(_db, table, String(id)), arr[idx]);
         return arr[idx];
     },
 
@@ -354,32 +406,28 @@ const DataStore = {
         const idx = arr.findIndex(r => r.id === id);
         if (idx === -1) return false;
         arr.splice(idx, 1);
-        this.save();
+        // Delete from Firestore asynchronously
+        deleteDoc(doc(_db, table, String(id)));
         return true;
     },
 
+    // ---- SESSION (stays in localStorage — per-user, per-browser) ----
     getSession() {
         try {
             const raw = localStorage.getItem(CONFIG.SESSION_KEY);
             return raw ? JSON.parse(raw) : null;
         } catch(e) { return null; }
     },
+    setSession(obj) { localStorage.setItem(CONFIG.SESSION_KEY, JSON.stringify(obj)); },
+    clearSession() { localStorage.removeItem(CONFIG.SESSION_KEY); },
 
-    setSession(obj) {
-        localStorage.setItem(CONFIG.SESSION_KEY, JSON.stringify(obj));
-    },
-
-    clearSession() {
-        localStorage.removeItem(CONFIG.SESSION_KEY);
-    },
-
-    seedDemo() {
+    async seedDemo() {
         const now = new Date().toISOString();
         const today = new Date();
         const daysAgo = (n) => new Date(today.getTime() - n * 86400000).toISOString().split('T')[0];
         const daysFrom = (n) => new Date(today.getTime() + n * 86400000).toISOString().split('T')[0];
 
-        this._data = {
+        const seedData = {
             _nextIds: { departments:4, teams:7, members:13, customers:5, equipment:9, tasks:7, workerPayments:4, expenses:4, customerPayments:3, products:7, sales:4 },
             departments: [
                 { id:1, name:'Electrical', createdAt:now, updatedAt:now },
@@ -460,7 +508,36 @@ const DataStore = {
                 { id:3, saleNumber:'SL-003', date:daysAgo(1), items:[{productId:5,productName:'PVC Pipe 110mm (3m)',barcode:'3045140105502',qty:10,unitPrice:8500,lineTotal:85000},{productId:4,productName:'LED Panel Light 60x60',barcode:'8710103900108',qty:2,unitPrice:35000,lineTotal:70000}], totalAmount:155000, paymentMethod:'Bank Transfer', notes:'', createdAt:now }
             ]
         };
-        this.save();
+
+        // Write all seed records to Firestore using batched writes
+        // Firestore batches are limited to 500 ops; split if needed
+        const allRecords = [];
+        CONFIG.TABLES.forEach(table => {
+            (seedData[table] || []).forEach(record => {
+                allRecords.push({ table, record });
+            });
+        });
+
+        // Process in chunks of 400 to stay safely under the 500-op limit
+        const CHUNK = 400;
+        for (let i = 0; i < allRecords.length; i += CHUNK) {
+            const chunk = allRecords.slice(i, i + CHUNK);
+            const batch = writeBatch(_db);
+            chunk.forEach(({ table, record }) => {
+                batch.set(doc(_db, table, String(record.id)), record);
+            });
+            await batch.commit();
+        }
+
+        // Save _nextIds to _meta
+        await setDoc(doc(_db, '_meta', 'nextIds'), seedData._nextIds);
+
+        // Reload from Firestore into memory (to populate this._data cleanly)
+        await Promise.all(CONFIG.TABLES.map(async (table) => {
+            const snap = await getDocs(collection(_db, table));
+            this._data[table] = snap.docs.map(d => d.data());
+        }));
+        this._data._nextIds = seedData._nextIds;
     }
 };
 
@@ -2507,11 +2584,39 @@ const PasswordModule = {
 };
 
 // ============================================================
-// SECTION 16: APP INITIALIZATION
+// SECTION 16: EXPOSE MODULES TO GLOBAL SCOPE
+// (Required because script.js is an ES module — inline onclick
+//  handlers in dynamically-generated HTML need window.X access)
 // ============================================================
-document.addEventListener('DOMContentLoaded', () => {
-    // Load data
-    DataStore.load();
+window.Auth = Auth;
+window.UI = UI;
+window.TasksModule = TasksModule;
+window.DepartmentsModule = DepartmentsModule;
+window.TeamsModule = TeamsModule;
+window.CustomersModule = CustomersModule;
+window.EquipmentModule = EquipmentModule;
+window.MembersModule = MembersModule;
+window.FinanceModule = FinanceModule;
+window.ReportsModule = ReportsModule;
+window.SalesModule = SalesModule;
+window.ExportModule = ExportModule;
+window.PasswordModule = PasswordModule;
+window.DashboardModule = DashboardModule;
+
+// ============================================================
+// SECTION 17: APP INITIALIZATION
+// ============================================================
+document.addEventListener('DOMContentLoaded', async () => {
+    // Load all data from Firestore (awaited — UI must not render before this)
+    try {
+        await DataStore.load();
+    } catch (err) {
+        console.error('Firestore load failed:', err);
+    }
+
+    // Hide Firestore loading overlay
+    const fsLoader = document.getElementById('firestore-loading');
+    if (fsLoader) fsLoader.style.display = 'none';
 
     // Restore theme/lang from session
     const session = DataStore.getSession();

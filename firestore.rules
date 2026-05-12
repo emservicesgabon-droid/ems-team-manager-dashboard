@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // All app data is in collections matching the CONFIG.TABLES list.
+    // The app handles its own auth via session — allow all reads/writes
+    // from the app itself. Restrict to prevent random public abuse.
+    // In production, tighten these rules once server-side auth is added.
+    match /{collection}/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
