@@ -41,6 +41,15 @@ function _esc(str) {
     return div.innerHTML;
 }
 
+// Formatted ID display — e.g. _fmtId('M', 7) → 'M-007'
+function _fmtId(prefix, id) {
+    return `${prefix}-${String(id).padStart(3, '0')}`;
+}
+// Renders a small ID badge for table cells
+function _idBadge(prefix, id) {
+    return `<span class="member-id-badge">${_fmtId(prefix, id)}</span>`;
+}
+
 const PasswordUtil = {
     validate(pw) {
         const checks = {
@@ -553,10 +562,11 @@ const Auth = {
             DataStore.setSession(this.currentUser);
             return { success:true };
         }
-        // Match by name OR by numeric Member ID (e.g. "5" matches member with id 5)
-        const byId = parseInt(username);
+        // Match by name OR by Member ID (e.g. "5", "M-005", "M005")
+        const idNum = parseInt(username.replace(/^[A-Za-z]+-?/i, ''));
         const member = DataStore.query('members', m =>
-            (m.name.toLowerCase() === username.toLowerCase() || (!isNaN(byId) && m.id === byId))
+            (m.name.toLowerCase() === username.toLowerCase() ||
+             (!isNaN(idNum) && m.id === idNum))
             && m.password === password
         )[0];
         if (member) {
@@ -853,6 +863,7 @@ const DashboardModule = {
             const assignees = this._getAssigneeNames(task);
             const equipHtml = this._getEquipmentHtml(task);
             return `<tr>
+                <td>${_idBadge('TSK', task.id)}</td>
                 <td><strong>${_esc(task.title)}</strong>${equipHtml}</td>
                 <td>${this._getDeptName(task.departmentId)}</td>
                 <td>${this._getTeamName(task.teamId)}</td>
@@ -931,7 +942,7 @@ const TasksModule = {
         if (searchF) filtered = filtered.filter(t => t.title.toLowerCase().includes(searchF));
 
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-secondary);padding:30px;">${I18n.t('msg.noTasks')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);padding:30px;">${I18n.t('msg.noTasks')}</td></tr>`;
             return;
         }
 
@@ -939,6 +950,7 @@ const TasksModule = {
             const assignees = DashboardModule._getAssigneeNames(task);
             const equipHtml = DashboardModule._getEquipmentHtml(task);
             return `<tr>
+                <td>${_idBadge('TSK', task.id)}</td>
                 <td><strong>${_esc(task.title)}</strong>${equipHtml}</td>
                 <td>${DashboardModule._getDeptName(task.departmentId)}</td>
                 <td>${DashboardModule._getTeamName(task.teamId)}</td>
@@ -1272,7 +1284,7 @@ const DepartmentsModule = {
             return;
         }
         tbody.innerHTML = depts.map(d => `<tr>
-            <td>DEP-${String(d.id).padStart(3,'0')}</td>
+            <td>${_idBadge('D', d.id)}</td>
             <td><strong>${_esc(d.name)}</strong></td>
             <td>${Auth.canCreateEditRecord() ? `<button class="btn btn-outline btn-sm" onclick="DepartmentsModule.openEditModal(${d.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
                 ${Auth.isAdmin() ? ` <button class="btn btn-outline btn-sm text-danger" onclick="DepartmentsModule.delete(${d.id})"><i class="fa-solid fa-trash"></i></button>` : ''}</td>
@@ -1336,10 +1348,11 @@ const TeamsModule = {
         if (!tbody) return;
         const teams = DataStore.getAll('teams');
         if (teams.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-secondary);padding:30px;">${I18n.t('msg.noTeams')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:30px;">${I18n.t('msg.noTeams')}</td></tr>`;
             return;
         }
         tbody.innerHTML = teams.map(t => `<tr>
+            <td>${_idBadge('T', t.id)}</td>
             <td><strong>${_esc(t.name)}</strong></td>
             <td>${DashboardModule._getDeptName(t.departmentId)}</td>
             <td>${t.fields || 'N/A'}</td>
@@ -1419,10 +1432,11 @@ const CustomersModule = {
         if (!tbody) return;
         const custs = DataStore.getAll('customers');
         if (custs.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--text-secondary);padding:30px;">${I18n.t('msg.noCustomers')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-secondary);padding:30px;">${I18n.t('msg.noCustomers')}</td></tr>`;
             return;
         }
         tbody.innerHTML = custs.map(c => `<tr>
+            <td>${_idBadge('C', c.id)}</td>
             <td><strong>${_esc(c.name)}</strong></td>
             <td>${_esc(c.location)}</td>
             <td>${Auth.canCreateEditRecord() ? `<button class="btn btn-outline btn-sm" onclick="CustomersModule.openEditModal(${c.id})" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
@@ -1486,7 +1500,7 @@ const EquipmentModule = {
         if (!tbody) return;
         const equip = DataStore.getAll('equipment');
         if (equip.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-secondary);padding:30px;">${I18n.t('msg.noEquipment')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:30px;">${I18n.t('msg.noEquipment')}</td></tr>`;
             return;
         }
         tbody.innerHTML = equip.map(eq => {
@@ -1494,6 +1508,7 @@ const EquipmentModule = {
             const statusClass = eq.status === 'Available' ? 'status-completed' : 'status-active';
             const inUse = eq.status === 'In Use';
             return `<tr>
+                <td>${_idBadge('EQ', eq.id)}</td>
                 <td><strong>${_esc(eq.name)}</strong></td>
                 <td>${icon}</td>
                 <td><span class="status-badge ${statusClass}">${eq.status}</span></td>
@@ -1637,7 +1652,7 @@ const MembersModule = {
             const delBtn = Auth.isAdmin() ? `<button class="btn btn-outline btn-sm text-danger" onclick="MembersModule.delete(${m.id})"><i class="fa-solid fa-trash"></i></button>` : '';
 
             return `<tr${!isActive ? ' style="opacity:0.5"' : ''}>
-                <td><span class="member-id-badge">#${m.id}</span></td>
+                <td>${_idBadge('M', m.id)}</td>
                 <td><strong>${_esc(m.name)}</strong>${!isActive ? ' <span class="status-badge status-pending" style="font-size:10px;">Deactivated</span>' : ''}</td>
                 <td><span class="status-badge ${roleClass}">${m.role}</span></td>
                 <td>${m.type || 'N/A'}</td>
@@ -2139,13 +2154,14 @@ const SalesModule = {
         if (searchFilter) products = products.filter(p => p.name.toLowerCase().includes(searchFilter) || p.barcode.includes(searchFilter));
 
         if (products.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="empty-msg">${I18n.t('sales.noProducts')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="empty-msg">${I18n.t('sales.noProducts')}</td></tr>`;
             return;
         }
         tbody.innerHTML = products.map(p => {
             const stockClass = p.quantity === 0 ? 'out' : p.quantity <= p.minStock ? 'low' : 'ok';
             const stockLabel = p.quantity === 0 ? 'Out of Stock' : p.quantity <= p.minStock ? 'Low Stock' : 'In Stock';
             return `<tr>
+                <td>${_idBadge('PRD', p.id)}</td>
                 <td><code>${_esc(p.barcode)}</code></td>
                 <td><strong>${_esc(p.name)}</strong>${p.description ? '<br><small style="color:var(--text-secondary)">' + _esc(p.description) + '</small>' : ''}</td>
                 <td>${_esc(p.category)}</td>
@@ -2964,17 +2980,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Close modals on backdrop click
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                const type = modal.id.replace('modal-', '');
-                if (type === 'confirm') {
-                    UI._handleConfirmCancel();
-                } else {
-                    UI.closeModal(type);
-                }
-            }
+    // Backdrop click: ONLY close the confirm dialog — all form modals stay open
+    // (prevents losing form data when accidentally clicking outside)
+    const confirmModal = document.getElementById('modal-confirm');
+    if (confirmModal) {
+        confirmModal.addEventListener('click', (e) => {
+            if (e.target === confirmModal) UI._handleConfirmCancel();
         });
-    });
+    }
 });
